@@ -15,7 +15,7 @@ if [ ! -d "rag/venv" ]; then
     python3 -m venv rag/venv
 fi
 source rag/venv/bin/activate
-pip install -r rag/requirements.txt -q
+pip install -r rag/requirements.txt
 echo "-> Starting FastAPI AI service..."
 uvicorn rag.main:app --host 127.0.0.1 --port 8000 &
 RAG_PID=$!
