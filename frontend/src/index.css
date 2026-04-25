@@ -63,7 +63,7 @@
     overflow-x: hidden;
   }
 
-  a, button, input, textarea, select, [role="button"] {
+  a, button, input, textarea, select, [role="button"], label {
     cursor: none;
   }
 
@@ -117,53 +117,27 @@
   50% { opacity: 1; }
 }
 
-/* ─── Mouse-follow glow ─── */
-.cursor-glow {
+/* ─── Inverted Custom Cursor ─── */
+.custom-inverted-cursor {
   position: fixed;
-  width: 400px;
-  height: 400px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: radial-gradient(circle, var(--glow-color) 0%, transparent 70%);
-  pointer-events: none;
-  z-index: 1;
-  transform: translate(-50%, -50%);
-  transition: opacity 0.3s ease;
-  mix-blend-mode: screen;
-}
-
-/* ─── Custom Cursor ─── */
-.custom-cursor {
-  position: fixed;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: hsl(270 80% 65%);
+  background: white;
   pointer-events: none;
   z-index: 9999;
   transform: translate(-50%, -50%);
-  transition: width 0.15s, height 0.15s, background 0.15s;
-  box-shadow: 0 0 12px hsl(270 80% 65% / 0.6), 0 0 24px hsl(270 80% 65% / 0.3);
+  mix-blend-mode: difference;
+  transition: width 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
+              height 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.custom-cursor.hovering {
-  width: 36px;
-  height: 36px;
-  background: hsl(270 80% 65% / 0.2);
-  border: 2px solid hsl(270 80% 65%);
-  box-shadow: 0 0 20px hsl(270 80% 65% / 0.4);
+.custom-inverted-cursor.hovering {
+  width: 14px;
+  height: 14px;
 }
 
-.custom-cursor-trail {
-  position: fixed;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 1px solid hsl(270 80% 65% / 0.25);
-  pointer-events: none;
-  z-index: 9998;
-  transform: translate(-50%, -50%);
-  transition: all 0.12s ease-out;
-}
+
 
 /* ─── Glassmorphism Card ─── */
 .glass-card {

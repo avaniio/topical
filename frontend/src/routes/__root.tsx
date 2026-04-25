@@ -6,7 +6,7 @@ import {
 import { Toaster } from "@/components/ui/sonner"
 import { type QueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Menu, X, User } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 // import { TanStackRouterDevtools } from '@tanstack/router-devtools'
@@ -19,41 +19,37 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
   component: Root,
 });
 
-// ─── Custom Cursor Component ───
+// ─── Sleek Inverted Custom Cursor ───
 function CustomCursor() {
   const cursorRef = useRef<HTMLDivElement>(null);
-  const trailRef = useRef<HTMLDivElement>(null);
   const [isHovering, setIsHovering] = useState(false);
 
   useEffect(() => {
     const cursor = cursorRef.current;
-    const trail = trailRef.current;
-    if (!cursor || !trail) return;
+    if (!cursor) return;
 
     let mouseX = 0;
     let mouseY = 0;
-    let trailX = 0;
-    let trailY = 0;
+    let cursorX = 0;
+    let cursorY = 0;
 
     const onMouseMove = (e: MouseEvent) => {
       mouseX = e.clientX;
       mouseY = e.clientY;
-      cursor.style.left = `${mouseX}px`;
-      cursor.style.top = `${mouseY}px`;
     };
 
-    // Smooth trail follow
-    const animateTrail = () => {
-      trailX += (mouseX - trailX) * 0.15;
-      trailY += (mouseY - trailY) * 0.15;
-      trail.style.left = `${trailX}px`;
-      trail.style.top = `${trailY}px`;
-      requestAnimationFrame(animateTrail);
+    // Smooth cursor follow
+    const animateCursor = () => {
+      cursorX += (mouseX - cursorX) * 0.25;
+      cursorY += (mouseY - cursorY) * 0.25;
+      cursor.style.left = `${cursorX}px`;
+      cursor.style.top = `${cursorY}px`;
+      requestAnimationFrame(animateCursor);
     };
 
     const onMouseOver = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (target.closest('a, button, input, textarea, select, [role="button"], label')) {
+      if (target.closest('a, button, input, textarea, select, [role="button"], label, .cursor-pointer')) {
         setIsHovering(true);
       } else {
         setIsHovering(false);
@@ -62,7 +58,7 @@ function CustomCursor() {
 
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mouseover", onMouseOver);
-    animateTrail();
+    animateCursor();
 
     return () => {
       document.removeEventListener("mousemove", onMouseMove);
@@ -71,43 +67,11 @@ function CustomCursor() {
   }, []);
 
   return (
-    <>
-      <div ref={cursorRef} className={`custom-cursor ${isHovering ? "hovering" : ""}`} />
-      <div ref={trailRef} className="custom-cursor-trail" />
-    </>
+    <div 
+      ref={cursorRef} 
+      className={`custom-inverted-cursor ${isHovering ? "hovering" : ""}`} 
+    />
   );
-}
-
-// ─── Mouse-follow Glow Component ───
-function CursorGlow() {
-  const glowRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const glow = glowRef.current;
-    if (!glow) return;
-
-    let x = 0, y = 0, glowX = 0, glowY = 0;
-
-    const onMouseMove = (e: MouseEvent) => {
-      x = e.clientX;
-      y = e.clientY;
-    };
-
-    const animate = () => {
-      glowX += (x - glowX) * 0.05;
-      glowY += (y - glowY) * 0.05;
-      glow.style.left = `${glowX}px`;
-      glow.style.top = `${glowY}px`;
-      requestAnimationFrame(animate);
-    };
-
-    document.addEventListener("mousemove", onMouseMove);
-    animate();
-
-    return () => document.removeEventListener("mousemove", onMouseMove);
-  }, []);
-
-  return <div ref={glowRef} className="cursor-glow" />;
 }
 
 function NavBar() {
@@ -254,7 +218,6 @@ function Root() {
     <div className="min-h-screen flex flex-col relative">
       {/* Background effects */}
       <div className="grid-bg" />
-      <CursorGlow />
       <CustomCursor />
 
       {/* Content */}
