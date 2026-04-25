@@ -13,7 +13,7 @@ app.use("*", logger());
 
 const apiRoutes = app.basePath("/api")
   .route("/topics", topicsRoute)
-  .route("/rag", contentGenerationRoute)       // content generation (kept /rag for frontend compat)
+  .route("/ai", contentGenerationRoute)         // AI content generation (FastAPI proxy)
   .route("/lessonPlans", lessonPlansRoute)
   .route("/files", filesRoute)                 // secure file storage
   .route("/", authRoute);
