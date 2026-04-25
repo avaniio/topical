@@ -66,12 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = '/api/logout';
   };
 
-  // Show a toast message if there's an authentication error
-  useEffect(() => {
-    if (isError) {
-      toast.error('Authentication error. Please log in again.');
-    }
-  }, [isError]);
+  // Note: 401 on /api/me is expected for unauthenticated users — no toast needed
 
   // Provide the auth context to children
   return (
