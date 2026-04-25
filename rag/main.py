@@ -4,8 +4,11 @@ import re
 import logging
 import asyncio
 from typing import List, Optional, Dict, Any
+from dotenv import load_dotenv
 
-from fastapi import FastAPI
+load_dotenv()
+
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
@@ -39,7 +42,7 @@ app.add_middleware(
 def get_model():
     if not GOOGLE_API_KEY:
         raise ValueError("GOOGLE_AI_API_KEY is not configured")
-    return genai.GenerativeModel("gemini-2.0-flash")
+    return genai.GenerativeModel("gemini-1.5-flash")
 
 
 # ---------------------------------------------------------------------------
@@ -58,8 +61,8 @@ async def crawl_url(url: str) -> str:
         logger.warning("crawl4ai not installed, falling back to basic fetch")
         return await _basic_fetch(url)
     except Exception as e:
-        logger.error(f"crawl4ai error for {url}: {e}")
-        return await _basic_fetch(url)
+        logger.error(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
 
 
 async def _basic_fetch(url: str) -> str:
@@ -75,8 +78,8 @@ async def _basic_fetch(url: str) -> str:
         text = re.sub(r"\s{2,}", " ", text).strip()
         return text[:15000]
     except Exception as e:
-        logger.error(f"basic fetch error for {url}: {e}")
-        return ""
+        logger.error(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
 
 
 async def crawl_urls(urls: List[str]) -> str:
@@ -148,40 +151,10 @@ class RefineWithUrlsRequest(BaseModel):
 # ---------------------------------------------------------------------------
 # LLM helpers
 # ---------------------------------------------------------------------------
-def placeholder_hierarchy(topic: str) -> List[Dict[str, Any]]:
-    return [
-        {"topic": f"Introduction to {topic}", "subtopics": ["Overview", "Key Concepts", "History"], "relevanceScore": 95},
-        {"topic": f"Core Principles of {topic}", "subtopics": ["Fundamental Theory", "Best Practices"], "relevanceScore": 90},
-        {"topic": f"Advanced {topic}", "subtopics": ["Advanced Topics", "Case Studies"], "relevanceScore": 80},
-        {"topic": f"{topic} in Practice", "subtopics": ["Real-world Examples", "Tools & Ecosystem"], "relevanceScore": 85},
-    ]
-
-
-def placeholder_mdx(topic: str, main_topic: str) -> str:
-    return f"""# {topic}
-
-> This is placeholder content. Add your **GOOGLE_AI_API_KEY** to `.env` to enable AI content generation.
-
-## Overview
-
-This section covers **{topic}** as part of the broader **{main_topic}** lesson plan.
-
-## Key Points
-
-- Point one about {topic}
-- Point two about {topic}
-- Point three about {topic}
-
-## Summary
-
-Add your Google AI API key to unlock automatic MDX generation.
-"""
-
-
 async def optimize_prompt(raw_topic: str) -> str:
     """Refine a vague topic into a precise learning objective."""
     if not GOOGLE_API_KEY:
-        return raw_topic
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
     try:
         model = get_model()
         resp = model.generate_content(
@@ -190,8 +163,9 @@ async def optimize_prompt(raw_topic: str) -> str:
         )
         text = resp.text.strip().strip("'\"")
         return text or raw_topic
-    except Exception:
-        return raw_topic
+    except Exception as e:
+        logger.error(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
 
 
 async def generate_mdx_content(topic: str, main_topic: str, context: str = "") -> str:
@@ -245,8 +219,7 @@ async def refine_mdx_content(
 @app.post("/ai/search-topics")
 async def search_topics(req: SearchTopicsRequest):
     if not GOOGLE_API_KEY:
-        h = placeholder_hierarchy(req.query)
-        return {"status": "success", "data": {"topics": "```json\n" + json.dumps(h, indent=2) + "\n```"}}
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
     try:
         model = get_model()
         prompt = (
@@ -265,9 +238,8 @@ async def search_topics(req: SearchTopicsRequest):
                 item["relevanceScore"] = max(60, 95 - i * 5)
         return {"status": "success", "data": {"topics": "```json\n" + json.dumps(parsed, indent=2) + "\n```"}}
     except Exception as e:
-        logger.error(f"search-topics: {e}")
-        h = placeholder_hierarchy(req.query)
-        return {"status": "success", "data": {"topics": "```json\n" + json.dumps(h, indent=2) + "\n```"}}
+        logger.error(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
 
 
 # --- LLM-only generation ---
@@ -275,27 +247,27 @@ async def search_topics(req: SearchTopicsRequest):
 @app.post("/ai/generate-mdx-llm-only")
 async def generate_mdx_llm_only(req: GenerateMdxRequest):
     if not GOOGLE_API_KEY:
-        return {"status": "success", "data": {"mdx_content": placeholder_mdx(req.selected_topic, req.main_topic)}}
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
     try:
         optimized = await optimize_prompt(req.selected_topic)
         mdx = await generate_mdx_content(optimized, req.main_topic)
         return {"status": "success", "data": {"mdx_content": mdx}}
     except Exception as e:
-        logger.error(f"generate-mdx-llm-only: {e}")
-        return {"status": "success", "data": {"mdx_content": placeholder_mdx(req.selected_topic, req.main_topic)}}
+        logger.error(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
 
 
 @app.post("/ai/generate-mdx-llm-only-raw", response_class=PlainTextResponse)
 async def generate_mdx_llm_only_raw(req: GenerateMdxRequest):
     if not GOOGLE_API_KEY:
-        return placeholder_mdx(req.selected_topic, req.main_topic)
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
     try:
         optimized = await optimize_prompt(req.selected_topic)
         mdx = await generate_mdx_content(optimized, req.main_topic)
         return mdx
     except Exception as e:
-        logger.error(f"generate-mdx-llm-only-raw: {e}")
-        return placeholder_mdx(req.selected_topic, req.main_topic)
+        logger.error(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
 
 
 # --- Single-topic with crawl4ai web crawling ---
@@ -303,27 +275,27 @@ async def generate_mdx_llm_only_raw(req: GenerateMdxRequest):
 @app.post("/ai/single-topic")
 async def single_topic(req: GenerateMdxRequest):
     if not GOOGLE_API_KEY:
-        return {"status": "success", "data": {"mdx_content": placeholder_mdx(req.selected_topic, req.main_topic)}}
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
     try:
         context = await crawl_url(f"https://en.wikipedia.org/wiki/{req.selected_topic.replace(' ', '_')}")
         mdx = await generate_mdx_content(req.selected_topic, req.main_topic, context)
         return {"status": "success", "data": {"mdx_content": mdx}}
     except Exception as e:
-        logger.error(f"single-topic: {e}")
-        return {"status": "success", "data": {"mdx_content": placeholder_mdx(req.selected_topic, req.main_topic)}}
+        logger.error(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
 
 
 @app.post("/ai/single-topic-raw", response_class=PlainTextResponse)
 async def single_topic_raw(req: GenerateMdxRequest):
     if not GOOGLE_API_KEY:
-        return placeholder_mdx(req.selected_topic, req.main_topic)
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
     try:
         context = await crawl_url(f"https://en.wikipedia.org/wiki/{req.selected_topic.replace(' ', '_')}")
         mdx = await generate_mdx_content(req.selected_topic, req.main_topic, context)
         return mdx
     except Exception as e:
-        logger.error(f"single-topic-raw: {e}")
-        return placeholder_mdx(req.selected_topic, req.main_topic)
+        logger.error(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
 
 
 # --- URL-based generation with crawl4ai ---
@@ -331,53 +303,53 @@ async def single_topic_raw(req: GenerateMdxRequest):
 @app.post("/ai/generate-mdx-from-url")
 async def generate_mdx_from_url(req: UrlMdxRequest):
     if not GOOGLE_API_KEY:
-        return {"status": "success", "data": {"mdx_content": placeholder_mdx(req.selected_topic, req.main_topic)}}
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
     try:
         context = await crawl_url(req.url)
         mdx = await generate_mdx_content(req.selected_topic, req.main_topic, context)
         return {"status": "success", "data": {"mdx_content": mdx}}
     except Exception as e:
-        logger.error(f"generate-mdx-from-url: {e}")
-        return {"status": "success", "data": {"mdx_content": placeholder_mdx(req.selected_topic, req.main_topic)}}
+        logger.error(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
 
 
 @app.post("/ai/generate-mdx-from-url-raw", response_class=PlainTextResponse)
 async def generate_mdx_from_url_raw(req: UrlMdxRequest):
     if not GOOGLE_API_KEY:
-        return placeholder_mdx(req.selected_topic, req.main_topic)
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
     try:
         context = await crawl_url(req.url)
         mdx = await generate_mdx_content(req.selected_topic, req.main_topic, context)
         return mdx
     except Exception as e:
-        logger.error(f"generate-mdx-from-url-raw: {e}")
-        return placeholder_mdx(req.selected_topic, req.main_topic)
+        logger.error(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
 
 
 @app.post("/ai/generate-mdx-from-urls")
 async def generate_mdx_from_urls(req: UrlsMdxRequest):
     if not GOOGLE_API_KEY:
-        return {"status": "success", "data": {"mdx_content": placeholder_mdx(req.selected_topic, req.main_topic)}}
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
     try:
         context = await crawl_urls(req.urls)
         mdx = await generate_mdx_content(req.selected_topic, req.main_topic, context)
         return {"status": "success", "data": {"mdx_content": mdx}}
     except Exception as e:
-        logger.error(f"generate-mdx-from-urls: {e}")
-        return {"status": "success", "data": {"mdx_content": placeholder_mdx(req.selected_topic, req.main_topic)}}
+        logger.error(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
 
 
 @app.post("/ai/generate-mdx-from-urls-raw", response_class=PlainTextResponse)
 async def generate_mdx_from_urls_raw(req: UrlsMdxRequest):
     if not GOOGLE_API_KEY:
-        return placeholder_mdx(req.selected_topic, req.main_topic)
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
     try:
         context = await crawl_urls(req.urls)
         mdx = await generate_mdx_content(req.selected_topic, req.main_topic, context)
         return mdx
     except Exception as e:
-        logger.error(f"generate-mdx-from-urls-raw: {e}")
-        return placeholder_mdx(req.selected_topic, req.main_topic)
+        logger.error(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
 
 
 # --- Refinement endpoints ---
@@ -385,84 +357,87 @@ async def generate_mdx_from_urls_raw(req: UrlsMdxRequest):
 @app.post("/ai/refine")
 async def refine(req: RefineRequest):
     if not GOOGLE_API_KEY:
-        return {"status": "success", "data": {"mdx_content": req.mdx}}
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
     try:
         refined = await refine_mdx_content(req.mdx, "", req.question, "")
         return {"status": "success", "data": {"mdx_content": refined}}
     except Exception as e:
-        logger.error(f"refine: {e}")
-        return {"status": "success", "data": {"mdx_content": req.mdx}}
+        logger.error(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
 
 
 @app.post("/ai/refine-with-selection")
 async def refine_with_selection(req: RefineWithSelectionRequest):
     if not GOOGLE_API_KEY:
-        return {"status": "success", "data": {"mdx_content": req.mdx}}
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
     try:
         refined = await refine_mdx_content(req.mdx, req.selected_text, req.question, req.topic)
         return {"status": "success", "data": {"mdx_content": refined}}
     except Exception as e:
-        logger.error(f"refine-with-selection: {e}")
-        return {"status": "success", "data": {"mdx_content": req.mdx}}
+        logger.error(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
 
 
 @app.post("/ai/refine-with-selection-raw", response_class=PlainTextResponse)
 async def refine_with_selection_raw(req: RefineWithSelectionRequest):
     if not GOOGLE_API_KEY:
-        return req.mdx
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
     try:
         refined = await refine_mdx_content(req.mdx, req.selected_text, req.question, req.topic)
         return refined
-    except Exception:
-        return req.mdx
+    except Exception as e:
+        logger.error(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
 
 
 @app.post("/ai/refine-with-crawling")
 async def refine_with_crawling(req: RefineWithCrawlingRequest):
     if not GOOGLE_API_KEY:
-        return {"status": "success", "data": {"mdx_content": req.mdx}}
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
     try:
         # Use crawl4ai to gather additional context via Wikipedia
         context = await crawl_url(f"https://en.wikipedia.org/wiki/{req.topic.replace(' ', '_')}")
         refined = await refine_mdx_content(req.mdx, req.selected_text, req.question, req.topic, context)
         return {"status": "success", "data": {"mdx_content": refined}}
     except Exception as e:
-        logger.error(f"refine-with-crawling: {e}")
-        return {"status": "success", "data": {"mdx_content": req.mdx}}
+        logger.error(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
 
 
 @app.post("/ai/refine-with-crawling-raw", response_class=PlainTextResponse)
 async def refine_with_crawling_raw(req: RefineWithCrawlingRequest):
     if not GOOGLE_API_KEY:
-        return req.mdx
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
     try:
         context = await crawl_url(f"https://en.wikipedia.org/wiki/{req.topic.replace(' ', '_')}")
         refined = await refine_mdx_content(req.mdx, req.selected_text, req.question, req.topic, context)
         return refined
-    except Exception:
-        return req.mdx
+    except Exception as e:
+        logger.error(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
 
 
 @app.post("/ai/refine-with-urls")
 async def refine_with_urls(req: RefineWithUrlsRequest):
     if not GOOGLE_API_KEY:
-        return {"status": "success", "data": {"mdx_content": req.mdx}}
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
     try:
         context = await crawl_urls(req.urls)
         refined = await refine_mdx_content(req.mdx, req.selected_text, req.question, req.topic, context[:15000])
         return {"status": "success", "data": {"mdx_content": refined}}
     except Exception as e:
-        logger.error(f"refine-with-urls: {e}")
-        return {"status": "success", "data": {"mdx_content": req.mdx}}
+        logger.error(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
 
 
 @app.post("/ai/refine-with-urls-raw", response_class=PlainTextResponse)
 async def refine_with_urls_raw(req: RefineWithUrlsRequest):
     if not GOOGLE_API_KEY:
-        return req.mdx
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
     try:
         context = await crawl_urls(req.urls)
         refined = await refine_mdx_content(req.mdx, req.selected_text, req.question, req.topic, context[:15000])
         return refined
-    except Exception:
-        return req.mdx
+    except Exception as e:
+        logger.error(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")

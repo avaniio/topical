@@ -2,8 +2,32 @@ import { hc } from "hono/client";
 import { type ApiRoutes } from "@server/app";
 import { queryOptions } from "@tanstack/react-query";
 import { LessonPlan } from "@/stores/lessonPlanStore";
+import { toast } from "sonner";
 
-const client = hc<ApiRoutes>("/");
+const customFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+  const urlStr = typeof input === "string" ? input : (input as Request).url || input.toString();
+  
+  if (urlStr.includes("/api/ai/")) {
+    toast.info("Query submitted");
+    
+    try {
+      const response = await fetch(input, init);
+      
+      if (!response.ok) {
+        toast.error("Error connecting to Gemini API, maybe check your api key");
+      }
+      
+      return response;
+    } catch (error: any) {
+      toast.error("Error connecting to Gemini API, maybe check your api key");
+      throw error;
+    }
+  }
+  
+  return fetch(input, init);
+};
+
+const client = hc<ApiRoutes>("/", { fetch: customFetch });
 
 export const api = client.api;
 

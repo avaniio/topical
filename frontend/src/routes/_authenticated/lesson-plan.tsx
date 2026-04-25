@@ -5,12 +5,6 @@ import { toast } from 'sonner';
 import {
   searchTopics,
   generateSingleTopic,
-  generateSingleTopicRaw,
-  generateMdxFromUrlsRaw,
-  generateMdxLlmOnlyRaw,
-  refineWithSelectionRaw,
-  refineWithCrawlingRaw,
-  refineWithUrlsRaw,
   getSavedTopics,
   saveLessonPlan,
   getLessonPlanById,
@@ -23,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { MDXRenderer } from '@/components/mdxRenderer';
-import { Loader2, Search, X, Maximize2, Minimize2, ChevronLeft, ChevronRight, Link, Save, FilePlus, Plus, FileText, Settings } from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { useLessonPlanStore, UrlInput, SavedLessonTopic } from '@/stores/lessonPlanStore';
 import { DraggableTopicList } from '@/components/DraggableTopicList';
@@ -136,14 +130,11 @@ function LessonPlan() {
   // Local state for UI that doesn't need to persist
   const [isGeneratingMdx, setIsGeneratingMdx] = useState(false);
   const [isEditorFullscreen, setIsEditorFullscreen] = useState(false);
-  const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
-  const [isMobileView, setIsMobileView] = useState(false);
   const [isSavingMdx, setIsSavingMdx] = useState(false);
   const [hasSavedContent, setHasSavedContent] = useState(false);
 
   // Mobile-specific state
-  const [mobileActivePanel, setMobileActivePanel] = useState<'left' | 'main' | 'right'>('main');
 
   // Topic management state
   const [showAddTopicDialog, setShowAddTopicDialog] = useState(false);
@@ -155,30 +146,14 @@ function LessonPlan() {
   const [topicToDelete, setTopicToDelete] = useState<{topic: string, isSubtopic: boolean, parentTopic?: string} | null>(null);
 
   // Lesson plan management state
-  const [isSavingLessonPlan, setIsSavingLessonPlan] = useState(false);
-  const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false);
-  const [showLoadConfirmDialog, setShowLoadConfirmDialog] = useState(false);
-  const [localLessonPlanToLoad, setLocalLessonPlanToLoad] = useState<number | null>(null);
-  const [isLoadingLessonPlan, setIsLoadingLessonPlan] = useState(false);
 
   // Content refinement states
-  const [refinementMethod, setRefinementMethod] = useState<'selection' | 'crawling' | 'urls'>('selection');
-  const [refinementQuestion, setRefinementQuestion] = useState('');
-  const [selectedEditorText, setSelectedEditorText] = useState('');
-  const [originalSelectedText, setOriginalSelectedText] = useState('');
   // We need setRefinedText for the refinement functionality
   const [, setRefinedText] = useState('');
-  const [selectionStart, setSelectionStart] = useState<number | null>(null);
-  const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
-  const [isTextRefined, setIsTextRefined] = useState(false);
-  const [refinementUrlInputs, setRefinementUrlInputs] = useState<UrlInput[]>([{ value: '', isValid: false }]);
-  const [isRefiningMdx, setIsRefiningMdx] = useState(false);
-  const [refinementError, setRefinementError] = useState<string | null>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
 
   // Drag-and-drop media upload state
   const [isDraggingOver, setIsDraggingOver] = useState(false);
-  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
 
   // Upload an image file and insert the Markdown image syntax at the cursor
   const handleMediaDrop = async (e: React.DragEvent<HTMLTextAreaElement>) => {
@@ -189,7 +164,6 @@ function LessonPlan() {
     const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
     if (files.length === 0) return;
 
-    setIsUploadingMedia(true);
     try {
       for (const file of files) {
         const formData = new FormData();
@@ -223,8 +197,6 @@ function LessonPlan() {
       }
     } catch {
       toast.error('Image upload failed');
-    } finally {
-      setIsUploadingMedia(false);
     }
   };
 
@@ -249,11 +221,6 @@ function LessonPlan() {
 
 
   // Resizable panel state
-  const [leftPanelWidth, setLeftPanelWidth] = useState(250); // in pixels
-  const [rightPanelWidth, setRightPanelWidth] = useState(280); // in pixels
-  const [isResizingLeft, setIsResizingLeft] = useState(false);
-  const [isResizingRight, setIsResizingRight] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   // Query for searching topics
   const {
@@ -295,6 +262,7 @@ function LessonPlan() {
                 // Store the parsed hierarchy in the Zustand store
                 setTopicsHierarchy(parsedTopics);
                 console.log('Stored topics hierarchy in Zustand store:', parsedTopics);
+                toast.success("Hierarchy successfully generated");
               } else {
                 console.log('Saved hierarchy was set during fetch, not overwriting');
               }
@@ -306,20 +274,31 @@ function LessonPlan() {
               }
             } else {
               console.warn('Parsed topics array is empty or invalid');
+              toast.error("api skill issue");
+              throw new Error("Invalid format");
             }
           } else {
             console.warn('No JSON match found in topics response');
+            toast.error("api skill issue");
+            throw new Error("Invalid format");
           }
         } catch (error) {
           console.error("Error parsing topics hierarchy:", error);
+          if (error instanceof SyntaxError) {
+            toast.error("api skill issue");
+          }
+          throw error;
         }
       } else {
         console.warn('Topics search response is invalid or unsuccessful');
+        toast.error("api skill issue");
+        throw new Error("Invalid format");
       }
 
       return result;
     },
     enabled: false,
+    retry: false,
   });
 
   // Query for generating MDX content for a selected topic
@@ -340,6 +319,7 @@ function LessonPlan() {
       return generateSingleTopic(selectedTopicValue, mainTopicValue, 2);
     },
     enabled: !!(selectedTopic || selectedSubtopic) && !showRightSidebar && !showEditor,
+    retry: false,
   });
 
   // Query for fetching saved topics - only enabled when we don't have a lesson plan loaded

@@ -120,25 +120,25 @@ export const useLessonPlanStore = create<LessonPlanState>()(
       hasValidHierarchy: false,
 
       // Actions
-      setSearchQuery: (query) => set((state) => ({ searchQuery: query })),
-      setSelectedTopic: (topic) => set((state) => ({ selectedTopic: topic })),
-      setSelectedSubtopic: (subtopic) => set((state) => ({ selectedSubtopic: subtopic })),
-      setMainTopic: (topic) => set((state) => ({ mainTopic: topic })),
-      setShowRightSidebar: (show) => set((state) => ({ showRightSidebar: show })),
+      setSearchQuery: (query) => set(() => ({ searchQuery: query })),
+      setSelectedTopic: (topic) => set(() => ({ selectedTopic: topic })),
+      setSelectedSubtopic: (subtopic) => set(() => ({ selectedSubtopic: subtopic })),
+      setMainTopic: (topic) => set(() => ({ mainTopic: topic })),
+      setShowRightSidebar: (show) => set(() => ({ showRightSidebar: show })),
       setMdxContent: (content) => {
-        set((state) => ({
+        set(() => ({
           mdxContent: content,
           hasUnsavedChanges: state.currentLessonPlan !== null
         }));
       },
-      setShowEditor: (show) => set((state) => ({ showEditor: show })),
-      setGenerationMethod: (method) => set((state) => ({ generationMethod: method })),
-      setLastUsedGenerationMethod: (method) => set((state) => ({ lastUsedGenerationMethod: method })),
-      setShowGenerationOptions: (show) => set((state) => ({ showGenerationOptions: show })),
-      setEditorViewMode: (mode) => set((state) => ({ editorViewMode: mode })),
-      setIsLeftSidebarCollapsed: (collapsed) => set((state) => ({ isLeftSidebarCollapsed: collapsed })),
-      setIsRightSidebarCollapsed: (collapsed) => set((state) => ({ isRightSidebarCollapsed: collapsed })),
-      setUrlInputs: (inputs) => set((state) => ({ urlInputs: inputs })),
+      setShowEditor: (show) => set(() => ({ showEditor: show })),
+      setGenerationMethod: (method) => set(() => ({ generationMethod: method })),
+      setLastUsedGenerationMethod: (method) => set(() => ({ lastUsedGenerationMethod: method })),
+      setShowGenerationOptions: (show) => set(() => ({ showGenerationOptions: show })),
+      setEditorViewMode: (mode) => set(() => ({ editorViewMode: mode })),
+      setIsLeftSidebarCollapsed: (collapsed) => set(() => ({ isLeftSidebarCollapsed: collapsed })),
+      setIsRightSidebarCollapsed: (collapsed) => set(() => ({ isRightSidebarCollapsed: collapsed })),
+      setUrlInputs: (inputs) => set(() => ({ urlInputs: inputs })),
       setCurrentLessonPlan: (lessonPlan) => set((state) => {
         // If we have a lesson plan, reconstruct the hierarchy from it
         let updatedTopicsHierarchy = state.topicsHierarchy;
@@ -281,17 +281,17 @@ export const useLessonPlanStore = create<LessonPlanState>()(
           };
         });
       },
-      setHasUnsavedChanges: (hasChanges) => set((state) => ({ hasUnsavedChanges: hasChanges })),
+      setHasUnsavedChanges: (hasChanges) => set(() => ({ hasUnsavedChanges: hasChanges })),
 
       // Set the lesson plan to load
-      setLessonPlanToLoad: (id) => set((state) => ({ lessonPlanToLoad: id })),
+      setLessonPlanToLoad: (id) => set(() => ({ lessonPlanToLoad: id })),
 
       // Set the topics hierarchy
       setTopicsHierarchy: (hierarchy) => {
         console.log('Setting topics hierarchy in store:', hierarchy);
         // Create a deep copy to ensure state change is detected
         const hierarchyCopy = JSON.parse(JSON.stringify(hierarchy));
-        set((state) => ({
+        set(() => ({
           topicsHierarchy: hierarchyCopy,
           // Set this flag to true to indicate we have a valid hierarchy
           hasValidHierarchy: hierarchyCopy.length > 0
@@ -312,10 +312,10 @@ export const useLessonPlanStore = create<LessonPlanState>()(
       }),
 
       // Set read-only mode
-      setIsReadOnly: (isReadOnly) => set((state) => ({ isReadOnly })),
+      setIsReadOnly: (isReadOnly) => set(() => ({ isReadOnly })),
 
       // Set loading public lesson flag
-      setIsLoadingPublicLesson: (isLoadingPublicLesson) => set((state) => ({ isLoadingPublicLesson })),
+      setIsLoadingPublicLesson: (isLoadingPublicLesson) => set(() => ({ isLoadingPublicLesson })),
 
       // Reset state
       resetState: () => set({
