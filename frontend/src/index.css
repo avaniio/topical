@@ -1,5 +1,6 @@
 @import 'highlight.js/styles/github-dark.css';
 @import 'katex/dist/katex.min.css';
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -7,65 +8,38 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
+    --background: 240 6% 6%;
+    --foreground: 0 0% 95%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    --card: 240 5% 8%;
+    --card-foreground: 0 0% 95%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
+    --popover: 240 5% 8%;
+    --popover-foreground: 0 0% 95%;
 
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
+    --primary: 270 80% 65%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
+    --secondary: 240 5% 14%;
+    --secondary-foreground: 0 0% 95%;
 
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
+    --muted: 240 5% 14%;
+    --muted-foreground: 240 5% 55%;
 
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
+    --accent: 270 60% 20%;
+    --accent-foreground: 0 0% 95%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
+    --border: 240 5% 16%;
+    --input: 240 5% 16%;
+    --ring: 270 80% 65%;
 
-    --radius: 0.5rem;
-  }
+    --radius: 0.75rem;
 
-  .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
+    --grid-color: rgba(139, 92, 246, 0.06);
+    --glow-color: rgba(139, 92, 246, 0.15);
   }
 }
 
@@ -73,18 +47,26 @@
   * {
     @apply border-border;
   }
+
   html {
-    -webkit-text-size-adjust: 100%; /* Prevent font scaling in landscape while allowing user zoom */
+    -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    font-size: 16px; /* Base font size */
-  }
-  body {
-    @apply bg-background text-foreground;
-    font-size: 1rem; /* Use relative units */
-    line-height: 1.5;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-size: 16px;
   }
 
-  /* Responsive font sizes using clamp for better scaling with zoom */
+  body {
+    @apply bg-background text-foreground;
+    font-size: 1rem;
+    line-height: 1.6;
+    cursor: none;
+    overflow-x: hidden;
+  }
+
+  a, button, input, textarea, select, [role="button"] {
+    cursor: none;
+  }
+
   h1 {
     font-size: clamp(1.5rem, 4vw, 2.5rem);
   }
@@ -95,7 +77,6 @@
     font-size: clamp(1.125rem, 2.5vw, 1.75rem);
   }
 
-  /* Ensure buttons and interactive elements are large enough for touch */
   button,
   .btn,
   a.btn,
@@ -105,29 +86,200 @@
     min-width: 2.5rem;
   }
 
-  /* Improve focus styles for accessibility */
   :focus-visible {
-    outline: 2px solid var(--ring);
+    outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;
   }
+
+  ::selection {
+    background: hsl(270 80% 65% / 0.3);
+    color: white;
+  }
+}
+
+/* ─── Animated Grid Background ─── */
+.grid-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 40%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 40%, transparent 100%);
+  animation: gridPulse 8s ease-in-out infinite;
+}
+
+@keyframes gridPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* ─── Mouse-follow glow ─── */
+.cursor-glow {
+  position: fixed;
+  width: 400px;
+  height: 400px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--glow-color) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 1;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.3s ease;
+  mix-blend-mode: screen;
+}
+
+/* ─── Custom Cursor ─── */
+.custom-cursor {
+  position: fixed;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: hsl(270 80% 65%);
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  transition: width 0.15s, height 0.15s, background 0.15s;
+  box-shadow: 0 0 12px hsl(270 80% 65% / 0.6), 0 0 24px hsl(270 80% 65% / 0.3);
+}
+
+.custom-cursor.hovering {
+  width: 36px;
+  height: 36px;
+  background: hsl(270 80% 65% / 0.2);
+  border: 2px solid hsl(270 80% 65%);
+  box-shadow: 0 0 20px hsl(270 80% 65% / 0.4);
+}
+
+.custom-cursor-trail {
+  position: fixed;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid hsl(270 80% 65% / 0.25);
+  pointer-events: none;
+  z-index: 9998;
+  transform: translate(-50%, -50%);
+  transition: all 0.12s ease-out;
+}
+
+/* ─── Glassmorphism Card ─── */
+.glass-card {
+  background: hsl(240 5% 8% / 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid hsl(240 5% 16% / 0.5);
+  border-radius: var(--radius);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
+}
+
+.glass-card:hover {
+  border-color: hsl(270 80% 65% / 0.3);
+  box-shadow: 0 0 30px hsl(270 80% 65% / 0.08);
+  transform: translateY(-2px);
+}
+
+/* ─── Gradient Text ─── */
+.gradient-text {
+  background: linear-gradient(135deg, hsl(270 80% 65%), hsl(220 90% 70%), hsl(270 80% 75%));
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* ─── Subtle float animation ─── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* ─── Smooth fade-in for page content ─── */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+.animate-fade-in-delay-1 {
+  animation: fadeInUp 0.6s ease-out 0.1s forwards;
+  opacity: 0;
+}
+
+.animate-fade-in-delay-2 {
+  animation: fadeInUp 0.6s ease-out 0.2s forwards;
+  opacity: 0;
+}
+
+.animate-fade-in-delay-3 {
+  animation: fadeInUp 0.6s ease-out 0.3s forwards;
+  opacity: 0;
+}
+
+/* ─── Navbar glassmorphism ─── */
+.nav-glass {
+  background: hsl(240 6% 6% / 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid hsl(240 5% 16% / 0.4);
+}
+
+/* ─── Scrollbar Styling ─── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(270 80% 65% / 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(270 80% 65% / 0.5);
 }
 
 /* Prose styles for MDX content */
 @layer components {
   .prose {
-    @apply text-slate-700 dark:text-slate-300;
+    @apply text-slate-300;
   }
 
   .prose h1 {
-    @apply text-3xl font-bold mb-4 mt-6 text-slate-900 dark:text-slate-100;
+    @apply text-3xl font-bold mb-4 mt-6 text-slate-100;
   }
 
   .prose h2 {
-    @apply text-2xl font-semibold mb-3 mt-5 text-slate-900 dark:text-slate-100;
+    @apply text-2xl font-semibold mb-3 mt-5 text-slate-100;
   }
 
   .prose h3 {
-    @apply text-xl font-semibold mb-3 mt-5 text-slate-900 dark:text-slate-100;
+    @apply text-xl font-semibold mb-3 mt-5 text-slate-100;
   }
 
   .prose p {
@@ -147,15 +299,15 @@
   }
 
   .prose a {
-    @apply text-blue-600 dark:text-blue-400 underline;
+    @apply text-violet-400 underline;
   }
 
   .prose blockquote {
-    @apply pl-4 border-l-4 border-slate-300 dark:border-slate-700 italic;
+    @apply pl-4 border-l-4 border-violet-500/40 italic;
   }
 
   .prose code:not(pre code) {
-    @apply px-1.5 py-0.5 bg-slate-200 dark:bg-slate-800 rounded text-sm;
+    @apply px-1.5 py-0.5 bg-slate-800 rounded text-sm;
   }
 
   .prose pre {
@@ -171,15 +323,15 @@
   }
 
   .prose table th, .prose table td {
-    @apply border border-slate-300 dark:border-slate-700 p-2;
+    @apply border border-slate-700 p-2;
   }
 
   .prose table th {
-    @apply bg-slate-100 dark:bg-slate-800;
+    @apply bg-slate-800;
   }
 
   .prose hr {
-    @apply my-6 border-t border-slate-300 dark:border-slate-700;
+    @apply my-6 border-t border-slate-700;
   }
 
   .prose strong {
