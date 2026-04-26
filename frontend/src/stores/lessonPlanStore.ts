@@ -359,6 +359,8 @@ export const useLessonPlanStore = create<LessonPlanState>()(
         selectedTopic: state.selectedTopic,
         selectedSubtopic: state.selectedSubtopic,
         showEditor: state.showEditor,
+        showRightSidebar: state.showRightSidebar,
+        showGenerationOptions: state.showGenerationOptions,
         hasUnsavedChanges: state.hasUnsavedChanges,
         isReadOnly: state.isReadOnly,
         isLoadingPublicLesson: state.isLoadingPublicLesson,

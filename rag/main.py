@@ -45,7 +45,7 @@ def generate_content(prompt: str) -> str:
     if not client:
         raise ValueError("GOOGLE_AI_API_KEY is not configured")
     response = client.models.generate_content(
-        model="gemini-1.5-flash",
+        model="gemini-2.5-flash",
         contents=prompt,
     )
     return response.text
@@ -63,20 +63,20 @@ async def crawl_url(url: str) -> str:
             if result and result.markdown:
                 return result.markdown[:15000]
             return ""
-    except ImportError:
-        logger.warning("crawl4ai not installed, falling back to basic fetch")
+    except (ImportError, TypeError):
+        logger.warning("crawl4ai not available (not installed or incompatible Python version), falling back to basic fetch")
         return await _basic_fetch(url)
     except Exception as e:
-        logger.error(f"Error: {e}")
-        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
+        logger.error(f"Error crawling URL: {e}")
+        raise HTTPException(status_code=500, detail=f"Error crawling URL: {str(e)}")
 
 
 async def _basic_fetch(url: str) -> str:
     """Fallback URL fetcher when crawl4ai is unavailable."""
     import urllib.request
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=8) as resp:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; Topical/1.0)"})
+        with urllib.request.urlopen(req, timeout=30) as resp:
             html = resp.read().decode("utf-8", errors="ignore")
         text = re.sub(r"<script[\s\S]*?</script>", "", html, flags=re.I)
         text = re.sub(r"<style[\s\S]*?</style>", "", text, flags=re.I)
@@ -84,8 +84,8 @@ async def _basic_fetch(url: str) -> str:
         text = re.sub(r"\s{2,}", " ", text).strip()
         return text[:15000]
     except Exception as e:
-        logger.error(f"Error: {e}")
-        raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
+        logger.error(f"Error fetching URL: {e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching URL: {str(e)}")
 
 
 async def crawl_urls(urls: List[str]) -> str:

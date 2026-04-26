@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   searchTopics,
-  generateSingleTopic,
   generateSingleTopicRaw,
   generateMdxFromUrlsRaw,
   generateMdxLlmOnlyRaw,
@@ -332,26 +331,8 @@ function LessonPlan() {
     retry: false,
   });
 
-  // Query for generating MDX content for a selected topic
-  const {
-    data: mdxData,
-    isLoading: isLoadingMdx,
-    isError: isMdxError,
-  } = useQuery({
-    queryKey: ['generate-mdx', selectedTopic || selectedSubtopic, mainTopic],
-    queryFn: () => {
-      const selectedTopicValue = selectedTopic || selectedSubtopic || '';
-      // Use the tracked mainTopic state
-      const mainTopicValue = mainTopic || '';
-      console.log('Auto-generating MDX with:', {
-        selected_topic: selectedTopicValue,
-        main_topic: mainTopicValue
-      });
-      return generateSingleTopic(selectedTopicValue, mainTopicValue, 2);
-    },
-    enabled: !!(selectedTopic || selectedSubtopic) && !showRightSidebar && !showEditor,
-    retry: false,
-  });
+  // DISABLED: Auto-generation was removed to prevent unwanted API calls on page refresh.
+  // All content generation is now triggered explicitly via sidebar buttons.
 
   // Query for fetching saved topics - only enabled when we don't have a lesson plan loaded
   const {
@@ -2234,8 +2215,27 @@ function LessonPlan() {
     return 'w-1/2'; // On desktop, split view (50/50)
   };
 
+  // Combined loading state for the progress bar
+  const isAnyAiLoading = isGeneratingMdx || isRefiningMdx || isLoadingTopics;
+
   return (
     <div className={`flex flex-col gap-4 w-full ${isEditorFullscreen || isPreviewFullscreen ? 'h-screen overflow-hidden' : ''}`}>
+      {/* Global AI loading progress bar */}
+      {isAnyAiLoading && (
+        <div className="fixed top-0 left-0 right-0 z-[9999]">
+          <div className="h-1 w-full bg-transparent overflow-hidden">
+            <div
+              className="h-full rounded-full"
+              style={{
+                background: 'linear-gradient(90deg, var(--iridescent-1), var(--iridescent-2), var(--iridescent-3), var(--iridescent-1))',
+                backgroundSize: '300% 100%',
+                animation: 'loadingSlider 1.8s ease-in-out infinite',
+                width: '40%',
+              }}
+            />
+          </div>
+        </div>
+      )}
       {/* Top buttons for lesson plan management */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center px-2 py-2 bg-card rounded-lg shadow-sm border gap-2">
         <div className="flex flex-col sm:flex-row sm:items-center">
@@ -3199,26 +3199,14 @@ function LessonPlan() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {isLoadingMdx && (
-                <div className="flex justify-center items-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              {(selectedTopic || selectedSubtopic) && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                  <p className="text-sm">Choose a generation method from the right sidebar to create content</p>
                 </div>
               )}
 
-              {isMdxError && (
-                <div className="text-red-500 p-4">
-                  Error generating content. Please try selecting a different topic.
-                </div>
-              )}
-
-              {mdxData && isMdxResponse(mdxData) && mdxData.status === 'success' &&
-               mdxData.data?.mdx_content && (
-                <div className="prose dark:prose-invert max-w-none">
-                  <MDXRenderer content={mdxData.data.mdx_content} />
-                </div>
-              )}
-
-              {!selectedTopic && !selectedSubtopic && !isLoadingMdx && (
+              {!selectedTopic && !selectedSubtopic && (
                 <div className="text-center py-8 text-gray-500">
                   <Search className="h-12 w-12 mx-auto mb-4 opacity-20" />
                   <p>Search for a topic and select it from the sidebar to generate content</p>

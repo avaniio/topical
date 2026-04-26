@@ -20,6 +20,7 @@ export default defineConfig({
       "/api": {
         target: 'http://127.0.0.1:3000',
         changeOrigin: true,
+        timeout: 120000,       // 2 min — AI generation can be slow
       }
     }
   }

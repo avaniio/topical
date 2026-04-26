@@ -463,3 +463,9 @@
   background-size: 200% 100%;
   animation: liquidShimmer 2s ease-in-out infinite;
 }
+
+/* ─── AI Loading Progress Slider ─── */
+@keyframes loadingSlider {
+  0% { margin-left: -40%; }
+  100% { margin-left: 100%; }
+}

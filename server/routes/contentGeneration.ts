@@ -15,6 +15,7 @@ export const contentGenerationRoute = new Hono()
         headers: {
           "Content-Type": c.req.header("Content-Type") || "application/json",
         },
+        signal: AbortSignal.timeout(90_000), // 90s — URL crawl + Gemini generation can be slow
       };
 
       if (c.req.method !== "GET" && c.req.method !== "HEAD") {
