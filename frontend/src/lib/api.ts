@@ -261,8 +261,10 @@ export async function generateMdxFromUrlsRaw(urls: string[], selectedTopic: stri
 
 // Refine content
 export async function refineContent(mdx: string, question: string) {
-  const res = await api.ai.refine.$post({
-    json: { mdx, question }
+  const res = await fetch('/api/ai/refine', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mdx, question })
   });
   if (!res.ok) {
     throw new Error("Failed to refine content");

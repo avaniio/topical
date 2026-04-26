@@ -5,6 +5,12 @@ import { toast } from 'sonner';
 import {
   searchTopics,
   generateSingleTopic,
+  generateSingleTopicRaw,
+  generateMdxFromUrlsRaw,
+  generateMdxLlmOnlyRaw,
+  refineWithSelectionRaw,
+  refineWithCrawlingRaw,
+  refineWithUrlsRaw,
   getSavedTopics,
   saveLessonPlan,
   getLessonPlanById,
@@ -17,7 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { MDXRenderer } from '@/components/mdxRenderer';
-import { Loader2, Search } from 'lucide-react';
+import { Loader2, Search, X, Maximize2, Minimize2, ChevronLeft, ChevronRight, Link, Save, FilePlus, Plus, FileText, Settings } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { useLessonPlanStore, UrlInput, SavedLessonTopic } from '@/stores/lessonPlanStore';
 import { DraggableTopicList } from '@/components/DraggableTopicList';
@@ -130,11 +136,14 @@ function LessonPlan() {
   // Local state for UI that doesn't need to persist
   const [isGeneratingMdx, setIsGeneratingMdx] = useState(false);
   const [isEditorFullscreen, setIsEditorFullscreen] = useState(false);
+  const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
+  const [isMobileView, setIsMobileView] = useState(false);
   const [isSavingMdx, setIsSavingMdx] = useState(false);
   const [hasSavedContent, setHasSavedContent] = useState(false);
 
   // Mobile-specific state
+  const [mobileActivePanel, setMobileActivePanel] = useState<'left' | 'main' | 'right'>('main');
 
   // Topic management state
   const [showAddTopicDialog, setShowAddTopicDialog] = useState(false);
@@ -146,14 +155,36 @@ function LessonPlan() {
   const [topicToDelete, setTopicToDelete] = useState<{topic: string, isSubtopic: boolean, parentTopic?: string} | null>(null);
 
   // Lesson plan management state
+  const [isSavingLessonPlan, setIsSavingLessonPlan] = useState(false);
+  const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false);
+  const [showLoadConfirmDialog, setShowLoadConfirmDialog] = useState(false);
+  const [localLessonPlanToLoad, setLocalLessonPlanToLoad] = useState<number | null>(null);
+  const [isLoadingLessonPlan, setIsLoadingLessonPlan] = useState(false);
 
   // Content refinement states
-  // We need setRefinedText for the refinement functionality
+  const [refinementMethod, setRefinementMethod] = useState<'selection' | 'crawling' | 'urls'>('selection');
+  const [refinementQuestion, setRefinementQuestion] = useState('');
+  const [selectedEditorText, setSelectedEditorText] = useState('');
+  const [originalSelectedText, setOriginalSelectedText] = useState('');
   const [, setRefinedText] = useState('');
+  const [selectionStart, setSelectionStart] = useState<number | null>(null);
+  const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
+  const [isTextRefined, setIsTextRefined] = useState(false);
+  const [refinementUrlInputs, setRefinementUrlInputs] = useState<UrlInput[]>([{ value: '', isValid: false }]);
+  const [isRefiningMdx, setIsRefiningMdx] = useState(false);
+  const [refinementError, setRefinementError] = useState<string | null>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
 
   // Drag-and-drop media upload state
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+
+  // Resizable panel state
+  const [leftPanelWidth, setLeftPanelWidth] = useState(250);
+  const [rightPanelWidth, setRightPanelWidth] = useState(280);
+  const [isResizingLeft, setIsResizingLeft] = useState(false);
+  const [isResizingRight, setIsResizingRight] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Upload an image file and insert the Markdown image syntax at the cursor
   const handleMediaDrop = async (e: React.DragEvent<HTMLTextAreaElement>) => {

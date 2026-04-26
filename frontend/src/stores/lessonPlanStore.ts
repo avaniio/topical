@@ -126,7 +126,7 @@ export const useLessonPlanStore = create<LessonPlanState>()(
       setMainTopic: (topic) => set(() => ({ mainTopic: topic })),
       setShowRightSidebar: (show) => set(() => ({ showRightSidebar: show })),
       setMdxContent: (content) => {
-        set(() => ({
+        set((state) => ({
           mdxContent: content,
           hasUnsavedChanges: state.currentLessonPlan !== null
         }));
