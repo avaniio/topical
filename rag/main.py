@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
-import google.generativeai as genai
+from google import genai
 
 # ---------------------------------------------------------------------------
 # Setup
@@ -24,9 +24,10 @@ logger = logging.getLogger(__name__)
 GOOGLE_API_KEY = os.getenv("GOOGLE_AI_API_KEY", "")
 
 if GOOGLE_API_KEY:
-    genai.configure(api_key=GOOGLE_API_KEY)
+    client = genai.Client(api_key=GOOGLE_API_KEY)
 else:
-    logger.warning("GOOGLE_AI_API_KEY not set — AI endpoints will return placeholder content.")
+    client = None
+    logger.warning("GOOGLE_AI_API_KEY not set — AI endpoints will fail.")
 
 app = FastAPI(title="Topical AI Content Service")
 
@@ -39,10 +40,15 @@ app.add_middleware(
 )
 
 
-def get_model():
-    if not GOOGLE_API_KEY:
+def generate_content(prompt: str) -> str:
+    """Generate content using the Gemini API via the new google.genai SDK."""
+    if not client:
         raise ValueError("GOOGLE_AI_API_KEY is not configured")
-    return genai.GenerativeModel("gemini-1.5-flash")
+    response = client.models.generate_content(
+        model="gemini-1.5-flash",
+        contents=prompt,
+    )
+    return response.text
 
 
 # ---------------------------------------------------------------------------
@@ -156,12 +162,11 @@ async def optimize_prompt(raw_topic: str) -> str:
     if not GOOGLE_API_KEY:
         raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
     try:
-        model = get_model()
-        resp = model.generate_content(
+        text = generate_content(
             f'Convert this topic into a precise educational learning objective in 5-10 words. '
             f'Return ONLY the optimized topic name. Topic: "{raw_topic}"'
         )
-        text = resp.text.strip().strip("'\"")
+        text = text.strip().strip("'\"")
         return text or raw_topic
     except Exception as e:
         logger.error(f"Error: {e}")
@@ -169,7 +174,6 @@ async def optimize_prompt(raw_topic: str) -> str:
 
 
 async def generate_mdx_content(topic: str, main_topic: str, context: str = "") -> str:
-    model = get_model()
     ctx = f"\nUse this reference material:\n<context>\n{context}\n</context>\n" if context else ""
     prompt = (
         f"You are an expert technical writer creating educational MDX content.\n\n"
@@ -186,14 +190,13 @@ async def generate_mdx_content(topic: str, main_topic: str, context: str = "") -
         f"- No frontmatter\n"
         f"- Return ONLY the MDX content"
     )
-    resp = model.generate_content(prompt)
-    return resp.text.strip()
+    text = generate_content(prompt)
+    return text.strip()
 
 
 async def refine_mdx_content(
     full_mdx: str, selected_text: str, question: str, topic: str, context: str = ""
 ) -> str:
-    model = get_model()
     ctx = f"\nReference material:\n<context>\n{context}\n</context>\n" if context else ""
     sel = f"\nSelected text to refine:\n<selected>\n{selected_text}\n</selected>\n" if selected_text else ""
     action = (
@@ -208,8 +211,8 @@ async def refine_mdx_content(
         f"Full document:\n<document>\n{full_mdx}\n</document>\n\n"
         f"{action}\n\nReturn ONLY the complete updated MDX document."
     )
-    resp = model.generate_content(prompt)
-    return resp.text.strip()
+    text = generate_content(prompt)
+    return text.strip()
 
 
 # ---------------------------------------------------------------------------
@@ -221,15 +224,14 @@ async def search_topics(req: SearchTopicsRequest):
     if not GOOGLE_API_KEY:
         raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
     try:
-        model = get_model()
         prompt = (
             f'Generate a structured topic hierarchy for learning about "{req.query}".\n\n'
             f"Return ONLY valid JSON in this format:\n"
             f'[{{"topic": "Main topic", "subtopics": ["Sub 1", "Sub 2"]}}]\n\n'
             f"Rules: 4-6 main topics, 2-4 subtopics each, logical progression, clear names."
         )
-        resp = model.generate_content(prompt)
-        text = resp.text.strip()
+        text = generate_content(prompt)
+        text = text.strip()
         clean = re.sub(r"^```json\s*", "", text, flags=re.I)
         clean = re.sub(r"\s*```$", "", clean)
         parsed = json.loads(clean)
