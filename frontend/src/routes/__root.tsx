@@ -67,9 +67,9 @@ function CustomCursor() {
   }, []);
 
   return (
-    <div 
-      ref={cursorRef} 
-      className={`custom-inverted-cursor ${isHovering ? "hovering" : ""}`} 
+    <div
+      ref={cursorRef}
+      className={`custom-inverted-cursor ${isHovering ? "hovering" : ""}`}
     />
   );
 }
@@ -89,31 +89,33 @@ function NavBar() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const linkClass = "text-sm text-white/50 hover:text-white transition-colors duration-300 py-2 [&.active]:text-white";
+
   const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => (
     <>
       {isAuthenticated && (
         <>
-          <Link to="/dashboard" className="[&.active]:text-[hsl(270,80%,65%)] text-sm hover:text-[hsl(270,80%,65%)] transition-colors py-2">
+          <Link to="/dashboard" className={linkClass}>
             Dashboard
           </Link>
-          <Link to="/lesson-plan" className="[&.active]:text-[hsl(270,80%,65%)] text-sm hover:text-[hsl(270,80%,65%)] transition-colors py-2">
+          <Link to="/lesson-plan" className={linkClass}>
             Lesson Plan
           </Link>
-          <Link to="/mdx" className="[&.active]:text-[hsl(270,80%,65%)] text-sm hover:text-[hsl(270,80%,65%)] transition-colors py-2">
+          <Link to="/mdx" className={linkClass}>
             MDX Editor
           </Link>
-          <Link to="/public-lessons" className="[&.active]:text-[hsl(270,80%,65%)] text-sm hover:text-[hsl(270,80%,65%)] transition-colors py-2">
+          <Link to="/public-lessons" className={linkClass}>
             Public Lessons
           </Link>
-          {!isMobile && <span className="hidden md:block w-px h-5 bg-border mx-1" />}
-          {isMobile && <hr className="border-border my-2" />}
+          {!isMobile && <span className="hidden md:block w-px h-4 bg-white/10 mx-1" />}
+          {isMobile && <hr className="border-white/5 my-2" />}
         </>
       )}
 
-      <Link to="/mdxPublic" className="[&.active]:text-[hsl(270,80%,65%)] text-sm hover:text-[hsl(270,80%,65%)] transition-colors py-2">
+      <Link to="/mdxPublic" className={linkClass}>
         MDX Public
       </Link>
-      <Link to="/about" className="[&.active]:text-[hsl(270,80%,65%)] text-sm hover:text-[hsl(270,80%,65%)] transition-colors py-2">
+      <Link to="/about" className={linkClass}>
         About
       </Link>
     </>
@@ -126,33 +128,37 @@ function NavBar() {
           <span className="animate-pulse">Authenticating...</span>
         </Button>
       ) : isAuthenticated ? (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {user?.given_name && (
-            <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
-              <User className="h-4 w-4" />
+            <div className="hidden md:flex items-center gap-2 text-xs text-white/40">
+              <User className="h-3.5 w-3.5" />
               <span>{user.given_name}</span>
             </div>
           )}
-          <Button
-            size="sm"
-            variant="outline"
-            className="text-xs h-8 px-3 border-border/60 hover:border-[hsl(270,80%,65%)] hover:text-[hsl(270,80%,65%)] transition-all"
+          <button
+            className="glass-btn text-xs h-8 px-4 flex items-center"
             onClick={(e) => {
               e.preventDefault();
               logout();
             }}
           >
             Logout
-          </Button>
+          </button>
         </div>
       ) : (
         <div className="flex gap-2">
-          <Button asChild size="sm" variant="outline" className="text-xs h-8 px-3 border-border/60 hover:border-[hsl(270,80%,65%)]">
-            <a href="/api/login">Login</a>
-          </Button>
-          <Button asChild size="sm" className="text-xs h-8 px-3 bg-[hsl(270,80%,65%)] hover:bg-[hsl(270,80%,60%)] text-white">
-            <a href="/api/register">Signup</a>
-          </Button>
+          <a href="/api/login" className="glass-btn text-xs h-8 px-4 flex items-center">
+            Login
+          </a>
+          <a
+            href="/api/register"
+            className="text-xs h-8 px-4 flex items-center rounded-xl text-white font-medium"
+            style={{
+              background: 'linear-gradient(135deg, var(--iridescent-1), var(--iridescent-2))',
+            }}
+          >
+            Signup
+          </a>
         </div>
       )}
     </>
@@ -161,7 +167,7 @@ function NavBar() {
   return (
     <nav className="nav-glass sticky top-0 z-50 px-4 py-3 w-full">
       <div className="flex justify-between items-center w-full max-w-7xl mx-auto">
-        <Link to="/" className="text-xl font-bold gradient-text z-10 flex-shrink-0">
+        <Link to="/" className="text-lg font-bold gradient-text z-10 flex-shrink-0 tracking-tight">
           Topical
         </Link>
 
@@ -173,7 +179,7 @@ function NavBar() {
         </div>
 
         <button
-          className="md:hidden z-10 p-2"
+          className="md:hidden z-10 p-2 text-white/60"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
         >
@@ -181,12 +187,12 @@ function NavBar() {
         </button>
 
         {isMobileMenuOpen && (
-          <div className="fixed inset-0 bg-background z-50 md:hidden overflow-y-auto">
+          <div className="fixed inset-0 z-50 md:hidden" style={{ background: 'rgba(5, 8, 14, 0.95)', backdropFilter: 'blur(24px)' }}>
             <div className="flex flex-col h-full">
-              <div className="flex justify-between items-center p-4 border-b border-border/40">
+              <div className="flex justify-between items-center p-4 border-b border-white/5">
                 <Link
                   to="/"
-                  className="text-xl font-bold gradient-text"
+                  className="text-lg font-bold gradient-text"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Topical
@@ -194,7 +200,7 @@ function NavBar() {
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}
                   aria-label="Close menu"
-                  className="p-1"
+                  className="p-1 text-white/60"
                 >
                   <X size={20} />
                 </button>
@@ -216,7 +222,7 @@ function NavBar() {
 function Root() {
   return (
     <div className="min-h-screen flex flex-col relative">
-      {/* Background effects */}
+      {/* Ambient background */}
       <div className="grid-bg" />
       <CustomCursor />
 
@@ -225,7 +231,17 @@ function Root() {
       <main className="flex-1 px-4 py-6 w-full mx-auto relative z-10">
         <Outlet />
       </main>
-      <Toaster />
+      <Toaster
+        toastOptions={{
+          style: {
+            background: 'rgba(15, 20, 30, 0.8)',
+            backdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            color: 'rgba(255, 255, 255, 0.9)',
+            borderRadius: '12px',
+          },
+        }}
+      />
       {/* <TanStackRouterDevtools /> */}
     </div>
   );
