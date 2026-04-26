@@ -107,6 +107,7 @@ class GenerateMdxRequest(BaseModel):
     main_topic: str
     topic: Optional[str] = None
     num_results: Optional[int] = None
+    hierarchy: Optional[str] = None
 
 
 class UrlMdxRequest(BaseModel):
@@ -115,6 +116,7 @@ class UrlMdxRequest(BaseModel):
     main_topic: str
     topic: Optional[str] = None
     use_llm_knowledge: Optional[bool] = None
+    hierarchy: Optional[str] = None
 
 
 class UrlsMdxRequest(BaseModel):
@@ -123,6 +125,7 @@ class UrlsMdxRequest(BaseModel):
     main_topic: str
     topic: Optional[str] = None
     use_llm_knowledge: Optional[bool] = None
+    hierarchy: Optional[str] = None
 
 
 class RefineRequest(BaseModel):
@@ -173,17 +176,20 @@ async def optimize_prompt(raw_topic: str) -> str:
         raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
 
 
-async def generate_mdx_content(topic: str, main_topic: str, context: str = "") -> str:
+async def generate_mdx_content(topic: str, main_topic: str, context: str = "", hierarchy: str = "") -> str:
     ctx = f"\nUse this reference material:\n<context>\n{context}\n</context>\n" if context else ""
+    hier_ctx = f"\nHere is the full topic hierarchy for context:\n<hierarchy>\n{hierarchy}\n</hierarchy>\nStrictly focus ONLY on the topic '{topic}' and do not explain other topics from the hierarchy to avoid redundant content." if hierarchy else ""
     prompt = (
         f"You are an expert technical writer creating educational MDX content.\n\n"
         f"Generate comprehensive MDX content for: \"{topic}\"\n"
         f"Part of a lesson plan about: \"{main_topic}\"\n"
+        f"{hier_ctx}\n"
         f"{ctx}\n"
         f"Requirements:\n"
         f"- MDX format (Markdown with optional JSX, no custom components)\n"
         f"- Start with # {topic}\n"
         f"- 3-5 sections with ## headings\n"
+        f"- STRICTLY relevant to \"{topic}\". Do not overlap with or redundantly cover other subtopics in the hierarchy.\n"
         f"- Use bullet points, numbered lists, code blocks where appropriate\n"
         f"- Educational, clear, well-structured\n"
         f"- 400-800 words\n"
@@ -251,9 +257,10 @@ async def generate_mdx_llm_only(req: GenerateMdxRequest):
     if not GOOGLE_API_KEY:
         raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
     try:
-        optimized = await optimize_prompt(req.selected_topic)
-        mdx = await generate_mdx_content(optimized, req.main_topic)
-        return {"status": "success", "data": {"mdx_content": mdx}}
+        t = req.topic or req.selected_topic
+        context = ""
+        text = await generate_mdx_content(t, req.main_topic, context, req.hierarchy or "")
+        return {"status": "success", "data": {"mdx_content": text}}
     except Exception as e:
         logger.error(f"Error: {e}")
         raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
@@ -264,9 +271,10 @@ async def generate_mdx_llm_only_raw(req: GenerateMdxRequest):
     if not GOOGLE_API_KEY:
         raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
     try:
-        optimized = await optimize_prompt(req.selected_topic)
-        mdx = await generate_mdx_content(optimized, req.main_topic)
-        return mdx
+        t = req.topic or req.selected_topic
+        context = ""
+        text = await generate_mdx_content(t, req.main_topic, context, req.hierarchy or "")
+        return PlainTextResponse(content=text)
     except Exception as e:
         logger.error(f"Error: {e}")
         raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
@@ -280,7 +288,7 @@ async def single_topic(req: GenerateMdxRequest):
         raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
     try:
         context = await crawl_url(f"https://en.wikipedia.org/wiki/{req.selected_topic.replace(' ', '_')}")
-        mdx = await generate_mdx_content(req.selected_topic, req.main_topic, context)
+        mdx = await generate_mdx_content(req.selected_topic, req.main_topic, context, getattr(req, 'hierarchy', ''))
         return {"status": "success", "data": {"mdx_content": mdx}}
     except Exception as e:
         logger.error(f"Error: {e}")
@@ -293,7 +301,7 @@ async def single_topic_raw(req: GenerateMdxRequest):
         raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
     try:
         context = await crawl_url(f"https://en.wikipedia.org/wiki/{req.selected_topic.replace(' ', '_')}")
-        mdx = await generate_mdx_content(req.selected_topic, req.main_topic, context)
+        mdx = await generate_mdx_content(req.selected_topic, req.main_topic, context, getattr(req, 'hierarchy', ''))
         return mdx
     except Exception as e:
         logger.error(f"Error: {e}")
@@ -308,7 +316,7 @@ async def generate_mdx_from_url(req: UrlMdxRequest):
         raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
     try:
         context = await crawl_url(req.url)
-        mdx = await generate_mdx_content(req.selected_topic, req.main_topic, context)
+        mdx = await generate_mdx_content(req.selected_topic, req.main_topic, context, getattr(req, 'hierarchy', ''))
         return {"status": "success", "data": {"mdx_content": mdx}}
     except Exception as e:
         logger.error(f"Error: {e}")
@@ -321,7 +329,7 @@ async def generate_mdx_from_url_raw(req: UrlMdxRequest):
         raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
     try:
         context = await crawl_url(req.url)
-        mdx = await generate_mdx_content(req.selected_topic, req.main_topic, context)
+        mdx = await generate_mdx_content(req.selected_topic, req.main_topic, context, getattr(req, 'hierarchy', ''))
         return mdx
     except Exception as e:
         logger.error(f"Error: {e}")
@@ -334,7 +342,7 @@ async def generate_mdx_from_urls(req: UrlsMdxRequest):
         raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
     try:
         context = await crawl_urls(req.urls)
-        mdx = await generate_mdx_content(req.selected_topic, req.main_topic, context)
+        mdx = await generate_mdx_content(req.selected_topic, req.main_topic, context, getattr(req, 'hierarchy', ''))
         return {"status": "success", "data": {"mdx_content": mdx}}
     except Exception as e:
         logger.error(f"Error: {e}")
@@ -347,7 +355,7 @@ async def generate_mdx_from_urls_raw(req: UrlsMdxRequest):
         raise HTTPException(status_code=500, detail="Error connecting to Gemini API, maybe check your api key")
     try:
         context = await crawl_urls(req.urls)
-        mdx = await generate_mdx_content(req.selected_topic, req.main_topic, context)
+        mdx = await generate_mdx_content(req.selected_topic, req.main_topic, context, getattr(req, 'hierarchy', ''))
         return mdx
     except Exception as e:
         logger.error(f"Error: {e}")

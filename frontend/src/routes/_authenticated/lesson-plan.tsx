@@ -600,7 +600,8 @@ function LessonPlan() {
         search_query: searchQuery
       });
 
-      const rawMdx = await generateSingleTopicRaw(selectedTopicValue, mainTopicValue, 3);
+      const hierarchyStr = JSON.stringify(topicsHierarchy);
+      const rawMdx = await generateSingleTopicRaw(selectedTopicValue, mainTopicValue, 3, hierarchyStr);
       // Strip frontmatter before setting the content
       const cleanedMdx = stripFrontmatter(rawMdx);
       setMdxContent(cleanedMdx);
@@ -641,7 +642,8 @@ function LessonPlan() {
         main_topic: mainTopicValue
       });
 
-      const rawMdx = await generateMdxFromUrlsRaw(validUrls, selectedTopicValue, mainTopicValue, undefined, true);
+      const hierarchyStr = JSON.stringify(topicsHierarchy);
+      const rawMdx = await generateMdxFromUrlsRaw(validUrls, selectedTopicValue, mainTopicValue, undefined, true, hierarchyStr);
       // Strip frontmatter before setting the content
       const cleanedMdx = stripFrontmatter(rawMdx);
       setMdxContent(cleanedMdx);
@@ -675,7 +677,8 @@ function LessonPlan() {
         main_topic: mainTopicValue
       });
 
-      const rawMdx = await generateMdxLlmOnlyRaw(selectedTopicValue, mainTopicValue);
+      const hierarchyStr = JSON.stringify(topicsHierarchy);
+      const rawMdx = await generateMdxLlmOnlyRaw(selectedTopicValue, mainTopicValue, hierarchyStr);
       // Strip frontmatter before setting the content
       const cleanedMdx = stripFrontmatter(rawMdx);
       setMdxContent(cleanedMdx);
@@ -2545,9 +2548,21 @@ function LessonPlan() {
 
                 {!topicsData && (!topicsHierarchy || topicsHierarchy.length === 0) && (
                   <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                    <Search className="h-10 w-10 mb-4 opacity-20" />
-                    <p className="text-center text-sm">Search for a topic to begin</p>
+                    <Search className="h-10 w-10 mb-2 opacity-20" />
+                    <p className="text-sm text-center">Search to generate a hierarchy</p>
                   </div>
+                )}
+                
+                {!isReadOnly && topicsHierarchy && topicsHierarchy.length > 0 && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={openAddTopicDialog}
+                    className="w-full mt-4 flex items-center justify-center border-dashed"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Topic
+                  </Button>
                 )}
               </CardContent>
             </div>

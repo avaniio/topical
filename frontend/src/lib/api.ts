@@ -127,9 +127,9 @@ export async function getSavedTopics() {
 }
 
 // Generate MDX content for a single topic
-export async function generateSingleTopic(selectedTopic: string, mainTopic: string, numResults?: number) {
+export async function generateSingleTopic(selectedTopic: string, mainTopic: string, numResults?: number, hierarchy?: string) {
   const res = await api.ai["single-topic"].$post({
-    json: { selected_topic: selectedTopic, main_topic: mainTopic, topic: selectedTopic, num_results: numResults }
+    json: { selected_topic: selectedTopic, main_topic: mainTopic, topic: selectedTopic, num_results: numResults, hierarchy }
   });
   if (!res.ok) {
     throw new Error("Failed to generate MDX content");
@@ -139,11 +139,11 @@ export async function generateSingleTopic(selectedTopic: string, mainTopic: stri
 }
 
 // Generate raw MDX content for a single topic
-export async function generateSingleTopicRaw(selectedTopic: string, mainTopic: string, numResults?: number) {
+export async function generateSingleTopicRaw(selectedTopic: string, mainTopic: string, numResults?: number, hierarchy?: string) {
   try {
-    console.log('API call params:', { selected_topic: selectedTopic, main_topic: mainTopic, topic: selectedTopic, num_results: numResults });
+    console.log('API call params:', { selected_topic: selectedTopic, main_topic: mainTopic, topic: selectedTopic, num_results: numResults, hierarchy });
     const res = await api.ai["single-topic-raw"].$post({
-      json: { selected_topic: selectedTopic, main_topic: mainTopic, topic: selectedTopic, num_results: numResults }
+      json: { selected_topic: selectedTopic, main_topic: mainTopic, topic: selectedTopic, num_results: numResults, hierarchy }
     });
 
     if (!res.ok) {
@@ -161,9 +161,9 @@ export async function generateSingleTopicRaw(selectedTopic: string, mainTopic: s
 }
 
 // Generate MDX content using LLM only
-export async function generateMdxLlmOnly(selectedTopic: string, mainTopic: string) {
+export async function generateMdxLlmOnly(selectedTopic: string, mainTopic: string, hierarchy?: string) {
   const res = await api.ai["generate-mdx-llm-only"].$post({
-    json: { selected_topic: selectedTopic, main_topic: mainTopic, topic: selectedTopic }
+    json: { selected_topic: selectedTopic, main_topic: mainTopic, topic: selectedTopic, hierarchy }
   });
   if (!res.ok) {
     throw new Error("Failed to generate MDX content using LLM only");
@@ -173,11 +173,11 @@ export async function generateMdxLlmOnly(selectedTopic: string, mainTopic: strin
 }
 
 // Generate raw MDX content using LLM only
-export async function generateMdxLlmOnlyRaw(selectedTopic: string, mainTopic: string) {
+export async function generateMdxLlmOnlyRaw(selectedTopic: string, mainTopic: string, hierarchy?: string) {
   try {
-    console.log('API call params (LLM only):', { selected_topic: selectedTopic, main_topic: mainTopic, topic: selectedTopic });
+    console.log('API call params (LLM only):', { selected_topic: selectedTopic, main_topic: mainTopic, topic: selectedTopic, hierarchy });
     const res = await api.ai["generate-mdx-llm-only-raw"].$post({
-      json: { selected_topic: selectedTopic, main_topic: mainTopic, topic: selectedTopic }
+      json: { selected_topic: selectedTopic, main_topic: mainTopic, topic: selectedTopic, hierarchy }
     });
 
     if (!res.ok) {
@@ -195,9 +195,9 @@ export async function generateMdxLlmOnlyRaw(selectedTopic: string, mainTopic: st
 }
 
 // Generate MDX content from a URL
-export async function generateMdxFromUrl(url: string, selectedTopic: string, mainTopic: string, topic?: string, useLlmKnowledge?: boolean) {
+export async function generateMdxFromUrl(url: string, selectedTopic: string, mainTopic: string, topic?: string, useLlmKnowledge?: boolean, hierarchy?: string) {
   const res = await api.ai["generate-mdx-from-url"].$post({
-    json: { url, selected_topic: selectedTopic, main_topic: mainTopic, topic, use_llm_knowledge: useLlmKnowledge }
+    json: { url, selected_topic: selectedTopic, main_topic: mainTopic, topic, use_llm_knowledge: useLlmKnowledge, hierarchy }
   });
   if (!res.ok) {
     throw new Error("Failed to generate MDX from URL");
@@ -207,9 +207,9 @@ export async function generateMdxFromUrl(url: string, selectedTopic: string, mai
 }
 
 // Generate raw MDX content from a URL
-export async function generateMdxFromUrlRaw(url: string, selectedTopic: string, mainTopic: string, topic?: string, useLlmKnowledge?: boolean) {
+export async function generateMdxFromUrlRaw(url: string, selectedTopic: string, mainTopic: string, topic?: string, useLlmKnowledge?: boolean, hierarchy?: string) {
   const res = await api.ai["generate-mdx-from-url-raw"].$post({
-    json: { url, selected_topic: selectedTopic, main_topic: mainTopic, topic, use_llm_knowledge: useLlmKnowledge }
+    json: { url, selected_topic: selectedTopic, main_topic: mainTopic, topic, use_llm_knowledge: useLlmKnowledge, hierarchy }
   });
   if (!res.ok) {
     throw new Error("Failed to generate raw MDX from URL");
@@ -219,9 +219,9 @@ export async function generateMdxFromUrlRaw(url: string, selectedTopic: string, 
 }
 
 // Generate MDX content from multiple URLs
-export async function generateMdxFromUrls(urls: string[], selectedTopic: string, mainTopic: string, topic?: string, useLlmKnowledge?: boolean) {
+export async function generateMdxFromUrls(urls: string[], selectedTopic: string, mainTopic: string, topic?: string, useLlmKnowledge?: boolean, hierarchy?: string) {
   const res = await api.ai["generate-mdx-from-urls"].$post({
-    json: { urls, selected_topic: selectedTopic, main_topic: mainTopic, topic, use_llm_knowledge: useLlmKnowledge }
+    json: { urls, selected_topic: selectedTopic, main_topic: mainTopic, topic, use_llm_knowledge: useLlmKnowledge, hierarchy }
   });
   if (!res.ok) {
     throw new Error("Failed to generate MDX from URLs");
@@ -231,18 +231,19 @@ export async function generateMdxFromUrls(urls: string[], selectedTopic: string,
 }
 
 // Generate raw MDX content from multiple URLs
-export async function generateMdxFromUrlsRaw(urls: string[], selectedTopic: string, mainTopic: string, topic?: string, useLlmKnowledge?: boolean) {
+export async function generateMdxFromUrlsRaw(urls: string[], selectedTopic: string, mainTopic: string, topic?: string, useLlmKnowledge?: boolean, hierarchy?: string) {
   try {
     console.log('API call params (URLs):', {
       urls,
       selected_topic: selectedTopic,
       main_topic: mainTopic,
       topic,
-      use_llm_knowledge: useLlmKnowledge
+      use_llm_knowledge: useLlmKnowledge,
+      hierarchy
     });
 
     const res = await api.ai["generate-mdx-from-urls-raw"].$post({
-      json: { urls, selected_topic: selectedTopic, main_topic: mainTopic, topic, use_llm_knowledge: useLlmKnowledge }
+      json: { urls, selected_topic: selectedTopic, main_topic: mainTopic, topic, use_llm_knowledge: useLlmKnowledge, hierarchy }
     });
 
     if (!res.ok) {
