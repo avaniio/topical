@@ -38,12 +38,43 @@ function CustomCursor() {
       mouseY = e.clientY;
     };
 
-    // Smooth cursor follow
+    let lastTime = performance.now();
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+
+    // Smooth cursor follow with velocity-based stretch and size increase
     const animateCursor = () => {
+      const now = performance.now();
+      const dt = Math.max(now - lastTime, 1);
+      lastTime = now;
+
       cursorX += (mouseX - cursorX) * 0.25;
       cursorY += (mouseY - cursorY) * 0.25;
+
+      const dx = mouseX - lastMouseX;
+      const dy = mouseY - lastMouseY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const velocity = Math.min(distance / dt, 5); // cap velocity
+
+      lastMouseX = mouseX;
+      lastMouseY = mouseY;
+
+      const angle = Math.atan2(mouseY - cursorY, mouseX - cursorX) * (180 / Math.PI);
+
+      // Increase overall size based on speed, and stretch it along the movement axis
+      const scaleX = 1 + velocity * 0.15;
+      const scaleY = 1 - velocity * 0.05;
+      const baseScale = 1 + velocity * 0.1;
+
       cursor.style.left = `${cursorX}px`;
       cursor.style.top = `${cursorY}px`;
+      
+      if (distance > 1) {
+        cursor.style.transform = `translate(-50%, -50%) rotate(${angle}deg) scale(${baseScale}) scaleX(${scaleX}) scaleY(${scaleY})`;
+      } else {
+        cursor.style.transform = `translate(-50%, -50%) rotate(${angle}deg) scale(1) scaleX(1) scaleY(1)`;
+      }
+      
       requestAnimationFrame(animateCursor);
     };
 
