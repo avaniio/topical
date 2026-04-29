@@ -14,57 +14,14 @@ import { Button } from '@/components/ui/button';
 
 export const Route = createFileRoute('/_authenticated/editor')({ component: ProjectEditor });
 
-/* ── Undo/Redo history ── */
-function useHistory(initial: string) {
-  const [stack, setStack] = useState([initial]);
-  const [idx, setIdx] = useState(0);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
-
-  const current = stack[idx];
-
-  const push = useCallback((val: string) => {
-    // Debounce: group rapid keystrokes into one snapshot
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      setStack(prev => {
-        const newStack = prev.slice(0, idx + 1);
-        newStack.push(val);
-        // Keep max 100 snapshots
-        if (newStack.length > 100) newStack.shift();
-        return newStack;
-      });
-      setIdx(prev => Math.min(prev + 1, 99));
-    }, 400);
-  }, [idx]);
-
-  const undo = useCallback(() => {
-    setIdx(prev => Math.max(0, prev - 1));
-  }, []);
-
-  const redo = useCallback(() => {
-    setIdx(prev => Math.min(stack.length - 1, prev + 1));
-  }, [stack.length]);
-
-  const canUndo = idx > 0;
-  const canRedo = idx < stack.length - 1;
-
-  // Force-set without history (for initial load)
-  const reset = useCallback((val: string) => {
-    setStack([val]);
-    setIdx(0);
-  }, []);
-
-  return { current, push, undo, redo, canUndo, canRedo, reset };
-}
-
 function ProjectEditor() {
   const navigate = useNavigate();
 
+  // Project state
   const [projectId, setProjectId] = useState<number | undefined>();
   const [projectName, setProjectName] = useState('Untitled Project');
   const [projectType, setProjectType] = useState<'mdx' | 'latex'>('mdx');
-  const history = useHistory('');
-  const content = history.current;
+  const [content, setContentRaw] = useState('');
   const [viewMode, setViewMode] = useState<'code' | 'preview' | 'split'>('split');
   const [isSaving, setIsSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
@@ -74,6 +31,43 @@ function ProjectEditor() {
   const [imageUrl, setImageUrl] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const editorRef = useRef<HTMLTextAreaElement>(null);
+
+  // Undo/Redo — separate from display state
+  const historyRef = useRef<string[]>(['']);
+  const historyIdxRef = useRef(0);
+  const snapshotTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  const pushSnapshot = useCallback((val: string) => {
+    if (snapshotTimer.current) clearTimeout(snapshotTimer.current);
+    snapshotTimer.current = setTimeout(() => {
+      const h = historyRef.current;
+      const newH = h.slice(0, historyIdxRef.current + 1);
+      newH.push(val);
+      if (newH.length > 80) newH.shift();
+      historyRef.current = newH;
+      historyIdxRef.current = newH.length - 1;
+    }, 500);
+  }, []);
+
+  const undo = useCallback(() => {
+    if (historyIdxRef.current > 0) {
+      historyIdxRef.current--;
+      setContentRaw(historyRef.current[historyIdxRef.current]);
+    }
+  }, []);
+
+  const redo = useCallback(() => {
+    if (historyIdxRef.current < historyRef.current.length - 1) {
+      historyIdxRef.current++;
+      setContentRaw(historyRef.current[historyIdxRef.current]);
+    }
+  }, []);
+
+  const setContent = useCallback((val: string) => {
+    setContentRaw(val);
+    setIsDirty(true);
+    pushSnapshot(val);
+  }, [pushSnapshot]);
 
   // Load project
   useEffect(() => {
@@ -94,18 +88,16 @@ function ProjectEditor() {
       setProjectId(res.id);
       setProjectName(res.name);
       if (res.mainTopic.startsWith('latex:')) setProjectType('latex');
-      history.reset(combined);
+      setContentRaw(combined);
+      historyRef.current = [combined];
+      historyIdxRef.current = 0;
     } catch { toast.error('Failed to load project'); }
     finally { setIsLoading(false); }
   };
 
-  const setContent = useCallback((val: string) => {
-    history.push(val);
-    setIsDirty(true);
-  }, [history]);
-
   // Save
-  const handleSave = useCallback(async () => {
+  const doSave = useCallback(async (silent = false) => {
+    if (isSaving) return;
     setIsSaving(true);
     try {
       const mainTopic = projectType === 'latex' ? `latex:${projectName}` : projectName;
@@ -114,10 +106,21 @@ function ProjectEditor() {
       if ('error' in result) throw new Error(result.error);
       setProjectId(result.id);
       setIsDirty(false);
-      toast.success('Saved');
-    } catch { toast.error('Failed to save'); }
+      if (!silent) toast.success('Saved');
+    } catch { if (!silent) toast.error('Failed to save'); }
     finally { setIsSaving(false); }
-  }, [content, projectId, projectName, projectType]);
+  }, [content, projectId, projectName, projectType, isSaving]);
+
+  // Autosave — every 15 seconds if dirty
+  const autosaveRef = useRef<ReturnType<typeof setInterval>>();
+  useEffect(() => {
+    autosaveRef.current = setInterval(() => {
+      if (isDirty && !isSaving && projectId) {
+        doSave(true); // silent save
+      }
+    }, 15000);
+    return () => { if (autosaveRef.current) clearInterval(autosaveRef.current); };
+  }, [isDirty, isSaving, projectId, doSave]);
 
   // Image
   const handleImageUpload = () => { setImageUrl(''); setShowImageDialog(true); };
@@ -148,14 +151,14 @@ function ProjectEditor() {
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
-      if (mod && e.key === 's') { e.preventDefault(); handleSave(); }
-      if (mod && e.key === 'z' && !e.shiftKey) { e.preventDefault(); history.undo(); }
-      if (mod && e.key === 'z' && e.shiftKey) { e.preventDefault(); history.redo(); }
-      if (mod && e.key === 'y') { e.preventDefault(); history.redo(); }
+      if (mod && e.key === 's') { e.preventDefault(); doSave(); }
+      if (mod && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+      if (mod && e.key === 'z' && e.shiftKey) { e.preventDefault(); redo(); }
+      if (mod && e.key === 'y') { e.preventDefault(); redo(); }
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, [handleSave, history]);
+  }, [doSave, undo, redo]);
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-screen" style={{ background: '#0a0a0a' }}><Loader2 className="h-8 w-8 animate-spin" style={{ color: '#22c55e' }} /></div>;
@@ -163,7 +166,7 @@ function ProjectEditor() {
 
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden" style={{ background: '#0a0a0a' }}>
-      {/* ═══ Top Bar ═══ */}
+      {/* Top Bar */}
       <div className="flex items-center gap-2 px-3 py-1.5 shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <button onClick={() => navigate({ to: '/projects' } as any)}
           className="h-7 w-7 rounded-md flex items-center justify-center text-white/40 hover:text-white/70 transition-colors">
@@ -174,12 +177,12 @@ function ProjectEditor() {
         <div className="flex-1" />
 
         {/* Undo / Redo */}
-        <button onClick={history.undo} disabled={!history.canUndo} title="Undo (⌘Z)"
-          className="h-7 w-7 rounded-md flex items-center justify-center text-white/30 hover:text-white/60 disabled:opacity-20 transition-colors">
+        <button onClick={undo} title="Undo (⌘Z)"
+          className="h-7 w-7 rounded-md flex items-center justify-center text-white/30 hover:text-white/60 transition-colors">
           <Undo2 className="h-3.5 w-3.5" />
         </button>
-        <button onClick={history.redo} disabled={!history.canRedo} title="Redo (⌘⇧Z)"
-          className="h-7 w-7 rounded-md flex items-center justify-center text-white/30 hover:text-white/60 disabled:opacity-20 transition-colors">
+        <button onClick={redo} title="Redo (⌘⇧Z)"
+          className="h-7 w-7 rounded-md flex items-center justify-center text-white/30 hover:text-white/60 transition-colors">
           <Redo2 className="h-3.5 w-3.5" />
         </button>
 
@@ -201,7 +204,7 @@ function ProjectEditor() {
         </div>
 
         {/* Save */}
-        <button onClick={handleSave} disabled={isSaving}
+        <button onClick={() => doSave()} disabled={isSaving}
           className="h-7 px-3 rounded-md text-[11px] font-semibold flex items-center gap-1 text-black transition-all hover:scale-[1.02] disabled:opacity-50"
           style={{ background: 'linear-gradient(135deg, #22c55e, #4ade80)' }}>
           {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
@@ -209,11 +212,11 @@ function ProjectEditor() {
         </button>
       </div>
 
-      {/* ═══ Toolbar ═══ */}
+      {/* Toolbar */}
       <EditorToolbar editorRef={editorRef} content={content} setContent={setContent} setIsDirty={setIsDirty}
         projectType={projectType} onOpenAI={() => setShowAI(true)} onImageUpload={handleImageUpload} />
 
-      {/* ═══ Editor + Preview ═══ */}
+      {/* Editor + Preview */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {viewMode !== 'preview' && (
           <div className={`${viewMode === 'split' ? 'w-1/2' : 'w-full'} h-full flex flex-col`}
