@@ -52,6 +52,19 @@ export const userQueryOptions = queryOptions({
   retry: false,
 });
 
+export async function updateUsername(username: string) {
+  const res = await fetch("/api/username", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username })
+  });
+  if (!res.ok) {
+    const errorBody = await res.json().catch(() => ({}));
+    throw new Error(errorBody?.error || "Failed to update username");
+  }
+  return res.json();
+}
+
 // AI Content API functions
 
 // Search for topics

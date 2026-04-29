@@ -28,7 +28,7 @@ export const authRoute = new Hono()
     // get called every time we login or register
     const url: any = new URL(c.req.url);
     await kindeClient.handleRedirectToApp(sessionManager(c), url);
-    return c.redirect("/");
+    return c.redirect("/?auth_success=1");
   })
   .get("/logout", async (c) => {
     if (!kindeClient) {
@@ -39,6 +39,7 @@ export const authRoute = new Hono()
   })
   .get("/me", getUser, async (c) => {
     const user = c.var.user;
+    let dbUser = null;
 
     // Skip DB caching if database is not available
     if (db) {
@@ -52,28 +53,34 @@ export const authRoute = new Hono()
 
         // If user doesn't exist, insert them
         if (!existingUser.length) {
-          await db.insert(userTable).values({
+          const inserted = await db.insert(userTable).values({
             id: user.id,
             givenName: user.given_name,
             familyName: user.family_name,
             email: user.email,
-          });
+          }).returning();
+          dbUser = inserted[0];
         }
         // If user exists but information might have changed, update them
-        else if (
-          existingUser[0].givenName !== user.given_name ||
-          existingUser[0].familyName !== user.family_name ||
-          existingUser[0].email !== user.email
-        ) {
-          await db
-            .update(userTable)
-            .set({
-              givenName: user.given_name,
-              familyName: user.family_name,
-              email: user.email,
-              updatedAt: new Date()
-            })
-            .where(eq(userTable.id, user.id));
+        else {
+          dbUser = existingUser[0];
+          if (
+            existingUser[0].givenName !== user.given_name ||
+            existingUser[0].familyName !== user.family_name ||
+            existingUser[0].email !== user.email
+          ) {
+            const updated = await db
+              .update(userTable)
+              .set({
+                givenName: user.given_name,
+                familyName: user.family_name,
+                email: user.email,
+                updatedAt: new Date()
+              })
+              .where(eq(userTable.id, user.id))
+              .returning();
+            dbUser = updated[0];
+          }
         }
       } catch (error) {
         console.error("Error caching user information:", error);
@@ -81,7 +88,7 @@ export const authRoute = new Hono()
       }
     }
 
-    return c.json({ user });
+    return c.json({ user: { ...user, username: dbUser?.username || null } });
   })
   // Get user information by ID (for public display)
   .get("/user/:id", async (c) => {
@@ -110,11 +117,36 @@ export const authRoute = new Hono()
           id: user.id,
           given_name: user.givenName || null,
           family_name: user.familyName || null,
-          // Don't include email or other private information
+          username: user.username || null,
         }
       });
     } catch (error) {
       console.error("Error fetching user by ID:", error);
       return c.json({ error: "Failed to fetch user information" }, 500);
+    }
+  })
+  .patch("/username", getUser, async (c) => {
+    if (!db) return c.json({ error: "Database not configured" }, 503);
+    
+    try {
+      const { username } = await c.req.json();
+      if (!username || typeof username !== "string" || username.length < 3) {
+        return c.json({ error: "Valid username of at least 3 characters is required" }, 400);
+      }
+
+      // Check if username is taken
+      const existing = await db.select().from(userTable).where(eq(userTable.username, username)).limit(1);
+      if (existing.length > 0 && existing[0].id !== c.var.user.id) {
+        return c.json({ error: "Username is already taken" }, 409);
+      }
+
+      await db.update(userTable)
+        .set({ username, updatedAt: new Date() })
+        .where(eq(userTable.id, c.var.user.id));
+        
+      return c.json({ success: true, username });
+    } catch (error) {
+      console.error("Error updating username:", error);
+      return c.json({ error: "Failed to update username" }, 500);
     }
   });

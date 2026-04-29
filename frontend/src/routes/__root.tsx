@@ -19,20 +19,13 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 });
 
 function NavBar() {
-  const { user, isAuthenticated, loginUrl, logout, loginAction, isLoading } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname;
   const navRef = useRef<HTMLElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
   
-  const authLabel = isLoading 
-    ? <span className="opacity-0">Loading</span>
-    : isAuthenticated ? (user?.given_name || "Account") : "Sign in";
-
-  const authAction = isAuthenticated ? () => { logout(); } : undefined;
-  const authHref = isAuthenticated ? undefined : loginUrl;
-
   const updateNavItemWidth = useCallback(() => {
     const nav = navRef.current;
     if (!nav) return;
@@ -56,7 +49,7 @@ function NavBar() {
   useEffect(() => {
     const raf = requestAnimationFrame(() => updateNavItemWidth());
     return () => cancelAnimationFrame(raf);
-  }, [currentPath, isAuthenticated, authLabel, updateNavItemWidth]);
+  }, [currentPath, isAuthenticated, updateNavItemWidth]);
 
   // Position highlight over active element by default
   useEffect(() => {
@@ -106,10 +99,6 @@ function NavBar() {
               Lesson Plan
             </Link>
             <div className="nav-pill-divider" />
-            <Link to="/profile" className={`nav-pill-section ${isActive('/profile') ? 'active' : ''}`}>
-              Profile
-            </Link>
-            <div className="nav-pill-divider" />
           </>
         )}
 
@@ -122,15 +111,9 @@ function NavBar() {
         </Link>
         <div className="nav-pill-divider" />
 
-        {isAuthenticated ? (
-          <button className="nav-pill-section nav-pill-accent" onClick={authAction}>
-            Sign out
-          </button>
-        ) : (
-          <a href={authHref} onClick={loginAction} className="nav-pill-section nav-pill-accent">
-            {authLabel}
-          </a>
-        )}
+        <Link to="/profile" className={`nav-pill-section nav-pill-accent ${isActive('/profile') ? 'active' : ''}`}>
+          Profile
+        </Link>
       </nav>
 
       <div className="md:hidden fixed top-4 left-4 right-4 z-50 flex items-center justify-between">
@@ -164,19 +147,13 @@ function NavBar() {
               <Link to="/public-lessons" className="mobile-nav-link" onClick={() => setIsMobileMenuOpen(false)}>Explore</Link>
               <Link to="/about" className="mobile-nav-link" onClick={() => setIsMobileMenuOpen(false)}>About</Link>
               <hr className="border-white/5 my-3" />
-              {isAuthenticated ? (
+              {isAuthenticated && (
                 <>
                   <Link to="/dashboard" className="mobile-nav-link" onClick={() => setIsMobileMenuOpen(false)}>Dashboard</Link>
                   <Link to="/lesson-plan" className="mobile-nav-link" onClick={() => setIsMobileMenuOpen(false)}>Lesson Plan</Link>
-                  <Link to="/profile" className="mobile-nav-link" onClick={() => setIsMobileMenuOpen(false)}>Profile</Link>
-                  <hr className="border-white/5 my-3" />
-                  <button className="mobile-nav-link text-left" onClick={() => { logout(); setIsMobileMenuOpen(false); }}>Sign out</button>
                 </>
-              ) : isLoading ? (
-                <span className="mobile-nav-link text-white/20">Sign in</span>
-              ) : (
-                <a href={loginUrl} onClick={loginAction} className="mobile-nav-link" style={{ color: '#22c55e' }}>Sign in</a>
               )}
+              <Link to="/profile" className="mobile-nav-link" onClick={() => setIsMobileMenuOpen(false)}>Profile</Link>
             </div>
           </div>
         </div>
@@ -186,6 +163,32 @@ function NavBar() {
 }
 
 function Root() {
+  const { isLoading } = useAuth();
+  const searchParams = new URL(window.location.href).searchParams;
+  const isAuthCallback = searchParams.get('auth_success') === '1';
+
+  useEffect(() => {
+    if (isAuthCallback && !isLoading) {
+      // Remove auth_success from URL without reloading the page
+      const url = new URL(window.location.href);
+      url.searchParams.delete('auth_success');
+      window.history.replaceState({}, '', url);
+    }
+  }, [isAuthCallback, isLoading]);
+
+  // If returning from Kinde, show a loading screen while resolving cache
+  if (isAuthCallback && isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center relative">
+        <div className="grid-bg" />
+        <div className="z-10 flex flex-col items-center gap-4 text-white">
+          <div className="w-8 h-8 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+          <p className="opacity-70 text-sm">Completing authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col relative">
       <div className="grid-bg" />

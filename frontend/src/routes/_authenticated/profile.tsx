@@ -3,14 +3,46 @@ import { useAuth } from "@/lib/auth-context";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Mail, User, Shield } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Loader2, Mail, User, Shield, Check } from "lucide-react";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import { updateUsername } from "@/lib/api";
 
 export const Route = createFileRoute("/_authenticated/profile")({
   component: Profile,
 });
 
 function Profile() {
-  const { user, isLoading, loginUrl, logout, loginAction } = useAuth();
+  const { user, isLoading, loginUrl, logout, loginAction, refetchUser } = useAuth();
+  const [usernameInput, setUsernameInput] = useState("");
+  const [isUpdatingUsername, setIsUpdatingUsername] = useState(false);
+
+  // Initialize input once user is loaded
+  useEffect(() => {
+    if (user?.username) {
+      setUsernameInput(user.username);
+    }
+  }, [user?.username]);
+
+  const handleUpdateUsername = async () => {
+    if (!usernameInput || usernameInput.length < 3) {
+      toast.error("Username must be at least 3 characters");
+      return;
+    }
+    
+    setIsUpdatingUsername(true);
+    try {
+      await updateUsername(usernameInput);
+      await refetchUser?.();
+      toast.success("Username updated successfully");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update username");
+    } finally {
+      setIsUpdatingUsername(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -74,6 +106,29 @@ function Profile() {
                   <p className="text-sm font-medium">User ID</p>
                   <p className="text-sm text-muted-foreground break-all">{user.id}</p>
                 </div>
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-white/10">
+                <Label htmlFor="username" className="text-sm font-medium mb-2 block">Username</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    id="username"
+                    value={usernameInput} 
+                    onChange={(e) => setUsernameInput(e.target.value)} 
+                    placeholder="Set your username" 
+                    className="max-w-[240px] bg-black/40 border-white/10"
+                  />
+                  <Button 
+                    onClick={handleUpdateUsername} 
+                    disabled={isUpdatingUsername || usernameInput === (user.username || "")}
+                    size="sm"
+                  >
+                    {isUpdatingUsername ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  This connects your profile publicly across lesson plans.
+                </p>
               </div>
 
               {user.roles && user.roles.length > 0 && (

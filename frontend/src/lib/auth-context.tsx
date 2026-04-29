@@ -17,6 +17,7 @@ export interface User {
   family_name?: string;
   email?: string;
   picture?: string;
+  username?: string;
   roles?: string[];
 }
 
@@ -26,6 +27,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   hasRole: (role: string) => boolean;
+  refetchUser?: () => Promise<void>;
   loginUrl: string;
   registerUrl: string;
   loginAction: (e?: React.MouseEvent) => void;
@@ -52,16 +54,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
 
   // Use the userQueryOptions to fetch the current user
-  const { data, isLoading } = useQuery(userQueryOptions);
+  const { data, isLoading, refetch } = useQuery(userQueryOptions);
 
   // Extract the user from the data
   const user = (data?.user as unknown as User) || null;
+  // While we are initially fetching (no data cached yet), we don't want to flash unauthenticated UIs
+  // We can consider ourselves not strictly authenticated, but we shouldn't show Login buttons immediately.
   const isAuthenticated = !!user;
 
   // Function to check if the user has a specific role
   const hasRole = (role: string) => {
     if (!user || !user.roles) return false;
     return user.roles.includes(role);
+  };
+
+  const refetchUser = async () => {
+    await refetch();
   };
 
   // Function to handle logout
@@ -107,6 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: isLoading || isRedirecting,
         isAuthenticated,
         hasRole,
+        refetchUser,
         loginUrl: AUTH_ROUTES.login,
         registerUrl: AUTH_ROUTES.register,
         loginAction,
