@@ -170,7 +170,8 @@ function Root() {
     );
   }
 
-  const isEditorRoute = window.location.pathname.startsWith('/editor');
+  const routerState = useRouterState();
+  const isEditorRoute = routerState.location.pathname.startsWith('/editor');
 
   return (
     <div className="min-h-screen flex flex-col relative">

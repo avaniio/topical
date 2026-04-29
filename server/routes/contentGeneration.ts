@@ -14,6 +14,7 @@ export const contentGenerationRoute = new Hono()
         method: c.req.method,
         headers: {
           "Content-Type": c.req.header("Content-Type") || "application/json",
+          "X-Gemini-API-Key": c.req.header("X-Gemini-API-Key") || "",
         },
         signal: AbortSignal.timeout(90_000), // 90s — URL crawl + Gemini generation can be slow
       };

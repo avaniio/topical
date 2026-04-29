@@ -9,17 +9,28 @@ const customFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   
   if (urlStr.includes("/api/ai/")) {
     toast.info("Query submitted");
+
+    // Attach API key from localStorage
+    const apiKey = localStorage.getItem('gemini_api_key') || '';
+    const headers = new Headers(init?.headers);
+    if (apiKey) headers.set('X-Gemini-API-Key', apiKey);
     
     try {
-      const response = await fetch(input, init);
+      const response = await fetch(input, { ...init, headers });
       
       if (!response.ok) {
-        toast.error("Error connecting to Gemini API, maybe check your api key");
+        const body = await response.clone().json().catch(() => null);
+        const detail = body?.detail || '';
+        if (response.status === 400 && detail.includes('No API key')) {
+          toast.error("No API key configured. Go to Profile → AI Settings to add your Gemini API key.");
+        } else {
+          toast.error(detail || "Error connecting to Gemini API");
+        }
       }
       
       return response;
     } catch (error: any) {
-      toast.error("Error connecting to Gemini API, maybe check your api key");
+      toast.error("Error connecting to AI service");
       throw error;
     }
   }

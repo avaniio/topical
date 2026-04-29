@@ -7,10 +7,11 @@ import { getLessonPlans, deleteLessonPlan, saveLessonPlan, getLessonPlanById, Le
 import { stripFrontmatter } from '@/lib/utils';
 import { MDXRenderer } from '@/components/mdxRenderer';
 import {
-  FileType2, FileCode2, Plus, Calendar, Trash2, Loader2, Search, Globe, Lock, FolderOpen, Eye, X, ArrowLeft,
+  FileType2, FileCode2, Plus, Trash2, Loader2, Search, Globe, Lock, FolderOpen, Eye, X, Pencil,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -194,50 +195,76 @@ function ProjectsPage() {
               ))}
             </div>
           ) : filtered.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {filtered.map(plan => {
                 const type = getType(plan);
+                const isLatex = type === 'latex';
+                const accent = isLatex ? '#60a5fa' : '#22c55e';
                 return (
-                  <div key={plan.id} className="glass-card p-5 group flex flex-col">
-                    <div className="flex-1">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2 flex-1 mr-2">
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0"
-                            style={{ background: type === 'latex' ? 'rgba(59,130,246,0.15)' : 'rgba(34,197,94,0.15)', color: type === 'latex' ? '#60a5fa' : '#22c55e' }}>
-                            {type === 'latex' ? 'LaTeX' : 'MDX'}
-                          </span>
-                          <h3 className="text-sm font-semibold text-white/80 group-hover:text-white transition-colors leading-tight truncate">
+                  <div key={plan.id}
+                    className="group relative rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-0.5"
+                    style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    {/* Accent bar */}
+                    <div className="absolute top-0 left-0 w-full h-[2px]" style={{ background: `linear-gradient(90deg, ${accent}, transparent)`, opacity: 0.5 }} />
+
+                    <div className="p-6">
+                      {/* Header */}
+                      <div className="flex items-start gap-3 mb-5">
+                        <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0"
+                          style={{ background: isLatex ? 'rgba(59,130,246,0.08)' : 'rgba(34,197,94,0.08)' }}>
+                          {isLatex
+                            ? <FileCode2 className="h-4 w-4" style={{ color: accent }} />
+                            : <FileType2 className="h-4 w-4" style={{ color: accent }} />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-base font-semibold text-white/90 truncate group-hover:text-white transition-colors">
                             {plan.name}
                           </h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: accent, opacity: 0.8 }}>
+                              {isLatex ? 'LaTeX' : 'MDX'}
+                            </span>
+                            <span className="text-white/10">·</span>
+                            <span className="text-[11px] text-white/30">{formatDate(plan.createdAt)}</span>
+                          </div>
                         </div>
-                        {/* Public toggle */}
-                        <button onClick={() => confirmTogglePublic(plan as LessonPlanResponse, !plan.isPublic)}
-                          className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-colors shrink-0"
-                          style={plan.isPublic
-                            ? { background: 'rgba(34,197,94,0.1)', color: '#22c55e' }
-                            : { background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.3)' }}>
-                          {plan.isPublic ? <><Globe className="h-2.5 w-2.5" /> Public</> : <><Lock className="h-2.5 w-2.5" /> Private</>}
+                        <button onClick={() => setDeleteId(plan.id)}
+                          className="h-8 w-8 rounded-lg flex items-center justify-center text-white/15 hover:text-red-400 hover:bg-red-400/5 transition-all shrink-0 opacity-0 group-hover:opacity-100">
+                          <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
 
-                      <div className="flex items-center gap-3 text-[11px] text-white/25 mb-3">
-                        <Calendar className="h-2.5 w-2.5" />
-                        <span>{formatDate(plan.createdAt)}</span>
+                      {/* Visibility toggle row */}
+                      <div className="flex items-center justify-between mb-5 py-3 px-4 rounded-xl"
+                        style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.04)' }}>
+                        <div className="flex items-center gap-2">
+                          {plan.isPublic
+                            ? <Globe className="h-3.5 w-3.5" style={{ color: '#22c55e' }} />
+                            : <Lock className="h-3.5 w-3.5 text-white/25" />}
+                          <span className={`text-xs font-medium ${plan.isPublic ? 'text-white/70' : 'text-white/35'}`}>
+                            {plan.isPublic ? 'Public — visible to community' : 'Private — only you'}
+                          </span>
+                        </div>
+                        <Switch
+                          checked={!!plan.isPublic}
+                          onCheckedChange={(v: boolean) => confirmTogglePublic(plan as LessonPlanResponse, v)}
+                          className="data-[state=checked]:bg-green-500"
+                        />
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-2 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-                      <button onClick={() => handleRead(plan.id)}
-                        className="glass-btn flex-1 h-8 text-xs font-medium flex items-center justify-center gap-1.5">
-                        <Eye className="h-3 w-3" /> Read
-                      </button>
-                      <button onClick={() => handleView(plan.id)}
-                        className="flex-1 h-8 text-xs font-medium rounded-lg flex items-center justify-center gap-1.5 text-black transition-all hover:scale-[1.02]"
-                        style={{ background: 'linear-gradient(135deg, #22c55e, #4ade80)' }}>Edit</button>
-                      <button onClick={() => setDeleteId(plan.id)}
-                        className="glass-btn h-8 w-8 flex items-center justify-center text-red-400/60 hover:text-red-400">
-                        <Trash2 className="h-3 w-3" />
-                      </button>
+                      {/* Actions */}
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => handleRead(plan.id)}
+                          className="flex-1 h-9 rounded-xl text-xs font-medium flex items-center justify-center gap-2 text-white/50 hover:text-white/80 transition-all duration-200"
+                          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                          <Eye className="h-3.5 w-3.5" /> Read
+                        </button>
+                        <button onClick={() => handleView(plan.id)}
+                          className="flex-1 h-9 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 text-black transition-all duration-200 hover:brightness-110"
+                          style={{ background: `linear-gradient(135deg, ${accent}, ${isLatex ? '#93c5fd' : '#4ade80'})` }}>
+                          <Pencil className="h-3.5 w-3.5" /> Edit
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );

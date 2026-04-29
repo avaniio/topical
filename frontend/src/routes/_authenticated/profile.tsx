@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Mail, User, Shield, Check } from "lucide-react";
+import { Loader2, Mail, User, Shield, Key, CheckCircle2, AlertTriangle, ExternalLink } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { updateUsername } from "@/lib/api";
@@ -19,19 +19,19 @@ function Profile() {
   const [usernameInput, setUsernameInput] = useState("");
   const [isUpdatingUsername, setIsUpdatingUsername] = useState(false);
 
-  // Initialize input once user is loaded
+  // API Key state
+  const [apiKey, setApiKey] = useState("");
+  const [apiKeyStatus, setApiKeyStatus] = useState<'unknown' | 'valid' | 'invalid'>('unknown');
+  const [isTestingKey, setIsTestingKey] = useState(false);
+
   useEffect(() => {
-    if (user?.username) {
-      setUsernameInput(user.username);
-    }
+    if (user?.username) setUsernameInput(user.username);
+    const stored = localStorage.getItem('gemini_api_key');
+    if (stored) { setApiKey(stored); setApiKeyStatus('valid'); }
   }, [user?.username]);
 
   const handleUpdateUsername = async () => {
-    if (!usernameInput || usernameInput.length < 3) {
-      toast.error("Username must be at least 3 characters");
-      return;
-    }
-    
+    if (!usernameInput || usernameInput.length < 3) { toast.error("Username must be at least 3 characters"); return; }
     setIsUpdatingUsername(true);
     try {
       await updateUsername(usernameInput);
@@ -39,9 +39,34 @@ function Profile() {
       toast.success("Username updated successfully");
     } catch (error: any) {
       toast.error(error.message || "Failed to update username");
-    } finally {
-      setIsUpdatingUsername(false);
-    }
+    } finally { setIsUpdatingUsername(false); }
+  };
+
+  const handleSaveApiKey = async () => {
+    const key = apiKey.trim();
+    if (!key) { localStorage.removeItem('gemini_api_key'); setApiKeyStatus('unknown'); toast.success('API key removed'); return; }
+    setIsTestingKey(true);
+    try {
+      // Quick validation by calling a lightweight endpoint
+      const res = await fetch('/api/ai/search-topics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Gemini-API-Key': key },
+        body: JSON.stringify({ query: 'test', limit: 1 }),
+      });
+      if (res.ok) {
+        localStorage.setItem('gemini_api_key', key);
+        setApiKeyStatus('valid');
+        toast.success('API key saved and verified');
+      } else {
+        setApiKeyStatus('invalid');
+        toast.error('Invalid API key — check and try again');
+      }
+    } catch {
+      // If backend is down, just save locally
+      localStorage.setItem('gemini_api_key', key);
+      setApiKeyStatus('valid');
+      toast.success('API key saved');
+    } finally { setIsTestingKey(false); }
   };
 
   if (isLoading) {
@@ -58,9 +83,7 @@ function Profile() {
       <div className="text-center p-8">
         <h2 className="text-2xl font-bold mb-2">Authentication Error</h2>
         <p className="text-muted-foreground mb-4">Unable to load user profile</p>
-        <Button asChild>
-          <a href={loginUrl} onClick={loginAction}>Login Again</a>
-        </Button>
+        <Button asChild><a href={loginUrl} onClick={loginAction}>Login Again</a></Button>
       </div>
     );
   }
@@ -127,7 +150,7 @@ function Profile() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
-                  This connects your profile publicly across lesson plans.
+                  Required for publishing projects to the community.
                 </p>
               </div>
 
@@ -138,12 +161,7 @@ function Profile() {
                     <p className="text-sm font-medium">Roles</p>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {user.roles.map(role => (
-                        <span
-                          key={role}
-                          className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full"
-                        >
-                          {role}
-                        </span>
+                        <span key={role} className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">{role}</span>
                       ))}
                     </div>
                   </div>
@@ -152,32 +170,71 @@ function Profile() {
             </div>
           </CardContent>
           <CardFooter>
-            <Button
-              onClick={logout}
-              className="w-full"
-            >
-              Logout
-            </Button>
+            <Button onClick={logout} className="w-full">Logout</Button>
           </CardFooter>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Account Settings</CardTitle>
-            <CardDescription>Manage your account preferences</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-muted-foreground">
-              Your account is managed through Kinde authentication service.
-            </p>
-            <Button asChild variant="outline" className="w-full">
-              <a href={loginUrl} target="_blank" rel="noopener noreferrer">
-                Manage Account Settings
+        {/* API Key Settings */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="h-4 w-4" />
+                AI Settings
+              </CardTitle>
+              <CardDescription>Configure your Gemini API key for AI content generation.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="api-key" className="text-sm font-medium mb-2 block">Gemini API Key</Label>
+                <Input
+                  id="api-key"
+                  type="password"
+                  value={apiKey}
+                  onChange={e => { setApiKey(e.target.value); setApiKeyStatus('unknown'); }}
+                  placeholder="AIza..."
+                  className="bg-black/40 border-white/10 font-mono text-xs"
+                />
+                {apiKeyStatus === 'valid' && (
+                  <div className="flex items-center gap-1.5 mt-2 text-xs" style={{ color: '#22c55e' }}>
+                    <CheckCircle2 className="h-3.5 w-3.5" /> API key verified
+                  </div>
+                )}
+                {apiKeyStatus === 'invalid' && (
+                  <div className="flex items-center gap-1.5 mt-2 text-xs text-red-400">
+                    <AlertTriangle className="h-3.5 w-3.5" /> Invalid API key
+                  </div>
+                )}
+              </div>
+              <Button onClick={handleSaveApiKey} disabled={isTestingKey} className="w-full" size="sm">
+                {isTestingKey ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Verifying...</> : 'Save API Key'}
+              </Button>
+              <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer"
+                className="text-xs text-white/40 hover:text-white/60 flex items-center gap-1 transition-colors">
+                <ExternalLink className="h-3 w-3" /> Get a free Gemini API key
               </a>
-            </Button>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Account Settings</CardTitle>
+              <CardDescription>Manage your account preferences</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground">
+                Your account is managed through Kinde authentication service.
+              </p>
+              <Button asChild variant="outline" className="w-full">
+                <a href={loginUrl} target="_blank" rel="noopener noreferrer">
+                  Manage Account Settings
+                </a>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
 }
+

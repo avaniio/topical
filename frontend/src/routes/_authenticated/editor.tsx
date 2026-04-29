@@ -17,7 +17,6 @@ export const Route = createFileRoute('/_authenticated/editor')({ component: Proj
 function ProjectEditor() {
   const navigate = useNavigate();
 
-  // Project state
   const [projectId, setProjectId] = useState<number | undefined>();
   const [projectName, setProjectName] = useState('Untitled Project');
   const [projectType, setProjectType] = useState<'mdx' | 'latex'>('mdx');
@@ -32,42 +31,21 @@ function ProjectEditor() {
   const [isUploading, setIsUploading] = useState(false);
   const editorRef = useRef<HTMLTextAreaElement>(null);
 
-  // Undo/Redo — separate from display state
-  const historyRef = useRef<string[]>(['']);
-  const historyIdxRef = useRef(0);
-  const snapshotTimer = useRef<ReturnType<typeof setTimeout>>();
-
-  const pushSnapshot = useCallback((val: string) => {
-    if (snapshotTimer.current) clearTimeout(snapshotTimer.current);
-    snapshotTimer.current = setTimeout(() => {
-      const h = historyRef.current;
-      const newH = h.slice(0, historyIdxRef.current + 1);
-      newH.push(val);
-      if (newH.length > 80) newH.shift();
-      historyRef.current = newH;
-      historyIdxRef.current = newH.length - 1;
-    }, 500);
-  }, []);
-
-  const undo = useCallback(() => {
-    if (historyIdxRef.current > 0) {
-      historyIdxRef.current--;
-      setContentRaw(historyRef.current[historyIdxRef.current]);
-    }
-  }, []);
-
-  const redo = useCallback(() => {
-    if (historyIdxRef.current < historyRef.current.length - 1) {
-      historyIdxRef.current++;
-      setContentRaw(historyRef.current[historyIdxRef.current]);
-    }
-  }, []);
-
   const setContent = useCallback((val: string) => {
     setContentRaw(val);
     setIsDirty(true);
-    pushSnapshot(val);
-  }, [pushSnapshot]);
+  }, []);
+
+  // Native undo/redo via execCommand (works with textarea)
+  const handleUndo = useCallback(() => {
+    editorRef.current?.focus();
+    document.execCommand('undo');
+  }, []);
+
+  const handleRedo = useCallback(() => {
+    editorRef.current?.focus();
+    document.execCommand('redo');
+  }, []);
 
   // Load project
   useEffect(() => {
@@ -89,8 +67,6 @@ function ProjectEditor() {
       setProjectName(res.name);
       if (res.mainTopic.startsWith('latex:')) setProjectType('latex');
       setContentRaw(combined);
-      historyRef.current = [combined];
-      historyIdxRef.current = 0;
     } catch { toast.error('Failed to load project'); }
     finally { setIsLoading(false); }
   };
@@ -111,15 +87,12 @@ function ProjectEditor() {
     finally { setIsSaving(false); }
   }, [content, projectId, projectName, projectType, isSaving]);
 
-  // Autosave — every 15 seconds if dirty
-  const autosaveRef = useRef<ReturnType<typeof setInterval>>();
+  // Autosave every 15s
   useEffect(() => {
-    autosaveRef.current = setInterval(() => {
-      if (isDirty && !isSaving && projectId) {
-        doSave(true); // silent save
-      }
+    const timer = setInterval(() => {
+      if (isDirty && !isSaving && projectId) doSave(true);
     }, 15000);
-    return () => { if (autosaveRef.current) clearInterval(autosaveRef.current); };
+    return () => clearInterval(timer);
   }, [isDirty, isSaving, projectId, doSave]);
 
   // Image
@@ -150,15 +123,11 @@ function ProjectEditor() {
   // Keyboard shortcuts
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
-      const mod = e.metaKey || e.ctrlKey;
-      if (mod && e.key === 's') { e.preventDefault(); doSave(); }
-      if (mod && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
-      if (mod && e.key === 'z' && e.shiftKey) { e.preventDefault(); redo(); }
-      if (mod && e.key === 'y') { e.preventDefault(); redo(); }
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); doSave(); }
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, [doSave, undo, redo]);
+  }, [doSave]);
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-screen" style={{ background: '#0a0a0a' }}><Loader2 className="h-8 w-8 animate-spin" style={{ color: '#22c55e' }} /></div>;
@@ -176,19 +145,17 @@ function ProjectEditor() {
           value={projectName} onChange={e => { setProjectName(e.target.value); setIsDirty(true); }} />
         <div className="flex-1" />
 
-        {/* Undo / Redo */}
-        <button onClick={undo} title="Undo (⌘Z)"
+        <button onClick={handleUndo} title="Undo (⌘Z)"
           className="h-7 w-7 rounded-md flex items-center justify-center text-white/30 hover:text-white/60 transition-colors">
           <Undo2 className="h-3.5 w-3.5" />
         </button>
-        <button onClick={redo} title="Redo (⌘⇧Z)"
+        <button onClick={handleRedo} title="Redo (⌘⇧Z)"
           className="h-7 w-7 rounded-md flex items-center justify-center text-white/30 hover:text-white/60 transition-colors">
           <Redo2 className="h-3.5 w-3.5" />
         </button>
 
         <div className="w-px h-4 mx-1" style={{ background: 'rgba(255,255,255,0.06)' }} />
 
-        {/* View mode */}
         <div className="flex rounded-md overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
           {([
             { mode: 'code' as const, icon: FileCode, label: 'Code' },
@@ -203,7 +170,6 @@ function ProjectEditor() {
           ))}
         </div>
 
-        {/* Save */}
         <button onClick={() => doSave()} disabled={isSaving}
           className="h-7 px-3 rounded-md text-[11px] font-semibold flex items-center gap-1 text-black transition-all hover:scale-[1.02] disabled:opacity-50"
           style={{ background: 'linear-gradient(135deg, #22c55e, #4ade80)' }}>
@@ -244,11 +210,9 @@ function ProjectEditor() {
         )}
       </div>
 
-      {/* AI Dialog */}
       <AIContentDialog open={showAI} onOpenChange={setShowAI} projectType={projectType}
         projectName={projectName} content={content} setContent={setContent} setIsDirty={setIsDirty} />
 
-      {/* Image Dialog */}
       <Dialog open={showImageDialog} onOpenChange={setShowImageDialog}>
         <DialogContent className="sm:max-w-md" style={{ background: 'rgba(10,10,10,0.95)', backdropFilter: 'blur(40px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px' }}>
           <DialogHeader>
