@@ -11,12 +11,67 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 
 export const Route = createFileRoute('/_authenticated/projects')({ component: ProjectsPage });
+
+/* ─── Custom animated pill toggle ─── */
+function PillToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        width: 72,
+        height: 28,
+        borderRadius: 100,
+        padding: '3px',
+        cursor: 'none',
+        border: `1px solid ${checked ? 'rgba(200,215,230,0.25)' : 'rgba(255,255,255,0.08)'}`,
+        background: checked
+          ? 'linear-gradient(135deg, rgba(180,200,220,0.18) 0%, rgba(200,215,230,0.10) 100%)'
+          : 'rgba(255,255,255,0.04)',
+        boxShadow: checked ? '0 0 12px rgba(180,200,220,0.12), inset 0 1px 1px rgba(255,255,255,0.08)' : 'none',
+        transition: 'background 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease',
+        flexShrink: 0,
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Track shimmer */}
+      <span style={{
+        position: 'absolute',
+        inset: 0,
+        borderRadius: 'inherit',
+        background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 60%)',
+        pointerEvents: 'none',
+      }} />
+      {/* Sliding thumb pill */}
+      <span style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 30,
+        height: 20,
+        borderRadius: 100,
+        background: checked
+          ? 'linear-gradient(135deg, #cbd5e1 0%, #e2e8f0 100%)'
+          : 'rgba(255,255,255,0.12)',
+        boxShadow: checked
+          ? '0 2px 8px rgba(148,163,184,0.35), inset 0 1px 1px rgba(255,255,255,0.5)'
+          : '0 1px 4px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.08)',
+        transform: checked ? 'translateX(40px)' : 'translateX(0px)',
+        transition: 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1), background 0.35s ease, box-shadow 0.35s ease',
+        flexShrink: 0,
+      }} />
+    </button>
+  );
+}
 
 function ProjectsPage() {
   const { user } = useAuth();
@@ -235,20 +290,27 @@ function ProjectsPage() {
                       </div>
 
                       {/* Visibility toggle row */}
-                      <div className="flex items-center justify-between mb-5 py-3 px-4 rounded-xl"
-                        style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.04)' }}>
-                        <div className="flex items-center gap-2">
-                          {plan.isPublic
-                            ? <Globe className="h-3.5 w-3.5" style={{ color: '#22c55e' }} />
-                            : <Lock className="h-3.5 w-3.5 text-white/25" />}
-                          <span className={`text-xs font-medium ${plan.isPublic ? 'text-white/70' : 'text-white/35'}`}>
-                            {plan.isPublic ? 'Public — visible to community' : 'Private — only you'}
-                          </span>
+                      <div className="flex items-center justify-between mb-5 py-2.5 px-3 rounded-xl"
+                        style={{ background: plan.isPublic ? 'rgba(34,197,94,0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${plan.isPublic ? 'rgba(34,197,94,0.18)' : 'rgba(255,255,255,0.05)'}`, transition: 'all 0.3s ease' }}>
+                        <div className="flex items-center gap-2.5">
+                          <div className="h-6 w-6 rounded-lg flex items-center justify-center shrink-0 transition-all duration-300"
+                            style={{ background: plan.isPublic ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.04)' }}>
+                            {plan.isPublic
+                              ? <Globe className="h-3.5 w-3.5" style={{ color: '#22c55e' }} />
+                              : <Lock className="h-3 w-3 text-white/30" />}
+                          </div>
+                          <div>
+                            <div className={`text-xs font-semibold transition-colors duration-300 ${plan.isPublic ? 'text-white/80' : 'text-white/30'}`}>
+                              {plan.isPublic ? 'Public' : 'Private'}
+                            </div>
+                            <div className="text-[10px] text-white/20 leading-none mt-0.5">
+                              {plan.isPublic ? 'Visible to everyone' : 'Only you can see this'}
+                            </div>
+                          </div>
                         </div>
-                        <Switch
+                        <PillToggle
                           checked={!!plan.isPublic}
-                          onCheckedChange={(v: boolean) => confirmTogglePublic(plan as LessonPlanResponse, v)}
-                          className="data-[state=checked]:bg-green-500"
+                          onChange={(v) => confirmTogglePublic(plan as LessonPlanResponse, v)}
                         />
                       </div>
 
