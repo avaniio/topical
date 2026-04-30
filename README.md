@@ -1,68 +1,99 @@
-# Topical
+<div align="center">
+  <h1>Topical</h1>
+  <p><b>Where the human brain works with artificial intelligence.</b></p>
+</div>
 
-Topical is an educational platform that helps users create, manage, and study structured lesson plans. It uses large language models and web crawling to generate learning materials from source content and provides a collaborative environment for educators and students.
+Topical is a premium, AI-powered platform for creating beautifully structured documents. Whether you are building lesson plans, writing research papers, or documenting technical architecture, Topical brings together the power of an intelligent AI author and real-time collaboration so you can create, refine, and publish your knowledge seamlessly.
 
-### Architecture & Features
+## ✨ Key Features
 
-- **AI Content Microservice (FastAPI & Python)**: Integrated Google Gemini LLM and crawl4ai for context-aware crawling, generation, relevance scoring, and prompt optimization, providing high-quality educational content with subsecond inference.
-- **Data & Auth Backend (Bun & Drizzle ORM)**: Built bun microservices for OAuth2 via Kinde Auth, secure file storage, and user management; used Drizzle ORM with PostgreSQL.
-- **MDX Authoring UI (React & TypeScript)**: Created a React/TS front end with TanStack Router/Query, featuring a live MDX editor with JSX previews, drag-and-drop media, and component hydration.
+- **Rich Format Support (MDX & LaTeX):** Write interactive MDX documents with embedded code and components, or craft professional LaTeX documents optimized for academia, engineering, and science.
+- **Context-Aware AI Generation:** Instead of generating blindly, Topical is strategic. It first generates a comprehensive content hierarchy, allowing you to generate each section one by one with full contextual awareness of the surrounding document structure.
+- **Advanced Intelligence Sources:** The AI doesn't just rely on its internal training. It is powered by the **Google Gemini API** and aggressively augments its knowledge by crawling the **live Internet** and specific **user-provided URLs**, ensuring factual, up-to-date content.
+- **Real-Time Multiplayer Collaboration:** Work together flawlessly. Topical features robust real-time collaboration with dynamic peer cursors, presence awareness, and CRDT-based state synchronization, allowing multiple authors to edit the exact same document simultaneously without conflicts.
+- **One-Click Publishing:** Ready to share your work? Publish your projects to the public Topical library with a single click so the world can read and learn from your work.
+- **Community Library & Forum:** Browse, explore, and learn from published lesson plans, research summaries, and technical docs created by other members of the Topical community.
 
 ---
 
-## Prerequisites
+## 🏗 Architecture
 
-- [Python 3.10+](https://python.org/)
+Topical is built on a modern, decoupled microservice architecture:
+- **Frontend:** React 18, TypeScript, Vite, TanStack Router, Yjs
+- **Backend API & WebSockets:** Bun, Hono, PostgreSQL, Drizzle ORM
+- **AI Microservice:** Python 3.9+, FastAPI, google-genai, Crawl4AI
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+Before you begin, ensure you have the following installed:
+- [Python 3.9+](https://python.org/)
 - [Bun](https://bun.sh/)
-- PostgreSQL database
+- [Node.js & npm](https://nodejs.org/) (for the Vite frontend)
+- A running PostgreSQL database
 
----
+### 1. Installation
 
-## Setup
+Clone the repository and install the required dependencies for both the backend and the frontend:
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/aryankad1an/topical.git
-   cd topical
-   ```
+```bash
+git clone https://github.com/aryankad1an/topical.git
+cd topical
 
-2. **Install dependencies:**
-   ```bash
-   bun install
-   cd frontend && bun install
-   cd ..
-   ```
+# Install backend dependencies
+bun install
 
-3. **Environment Setup:**
-   Copy the example environment file:
-   ```bash
-   cp .env.example .env
-   cd ..
-   ```
-   Open `.env` and fill in your PostgreSQL connection string, Kinde credentials, and Google Gemini API key.
+# Install frontend dependencies
+cd frontend && npm install
+cd ..
+```
 
-4. **Initialize Database:**
-   ```bash
-   bun run db:migrate
-   ```
+### 2. Environment Configuration
 
----
+Copy the example environment file to configure your local setup:
+```bash
+cp .env.example .env
+```
+Open `.env` and fill in your connection details:
+- **Database:** Your local PostgreSQL connection string
+- **Auth:** Your Kinde Auth credentials (`KINDE_CLIENT_ID`, `KINDE_CLIENT_SECRET`, etc.)
 
-## Running Locally
+*Note: For local authentication to work, ensure your Kinde application settings have `http://localhost:5173/api/callback` as an Allowed Callback URL and `http://localhost:5173` as an Allowed Logout Redirect URL.*
 
-Start all three services simultaneously:
+### 3. Database Migration
+
+Initialize your PostgreSQL database schema:
+```bash
+bun run db:migrate
+```
+
+### 4. Running the Platform Locally
+
+We provide an orchestration script to start all necessary services concurrently. It will automatically set up the Python virtual environment for the AI service if it doesn't exist.
 
 ```bash
 chmod +x run.sh
 ./run.sh
 ```
 
-This starts:
-- **AI Content Service (FastAPI):** `http://localhost:8000`
-- **Backend API (Bun/Hono):** `http://localhost:3000`
-- **Frontend (Vite):** `http://localhost:5173`
+**Services Started:**
+- 🟢 **Backend API & WebSockets:** `http://localhost:3000`
+- 🟢 **AI Content Service:** `http://localhost:8000`
+- 🟢 **Frontend UI:** `http://localhost:5173`
 
-*Note: For authentication to work locally, ensure your Kinde application settings have `http://localhost:5173/api/callback` as an Allowed Callback URL and `http://localhost:5173` as an Allowed Logout Redirect URL.*
+### 5. Configuring Your API Key
 
-## License
+To enable the AI generation features in Topical, you must provide your Google Gemini API Key. 
+
+**Important:** Instead of placing your API key in the `.env` file, **Topical handles API keys securely per-user within the web interface.**
+1. Log in to your locally running Topical instance (`http://localhost:5173`).
+2. Navigate to your **Profile** page.
+3. Scroll down to the **AI Settings** section.
+4. Enter and save your Gemini API Key. The platform will automatically verify it and enable the AI Generation workspace.
+
+---
+
+## 📜 License
 MIT License

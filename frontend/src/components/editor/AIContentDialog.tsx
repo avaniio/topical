@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import {
   searchTopics,
@@ -37,6 +37,13 @@ export function AIContentPanel({ open, onClose, projectType, projectName, conten
   const [snippets, setSnippets] = useState<GeneratedSnippet[]>([]);
   const [expandedSnippet, setExpandedSnippet] = useState<string | null>(null);
   const dragRef = useRef<string | null>(null);
+
+  // Floating window state
+  const [pos, setPos] = useState({ x: 20, y: 80 });
+  const [size, setSize] = useState({ w: 420, h: 600 });
+  const isDragging = useRef(false);
+  const isResizing = useRef(false);
+  const dragStart = useRef({ x: 0, y: 0, px: 0, py: 0, pw: 0, ph: 0 });
 
   const searchHierarchy = async () => {
     if (!topic.trim()) return;
@@ -117,55 +124,98 @@ export function AIContentPanel({ open, onClose, projectType, projectName, conten
     e.dataTransfer.effectAllowed = 'copy';
   };
 
+  // Window drag/resize handlers
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDragging.current) {
+        setPos({
+          x: dragStart.current.px + (e.clientX - dragStart.current.x),
+          y: dragStart.current.py + (e.clientY - dragStart.current.y)
+        });
+      } else if (isResizing.current) {
+        setSize({
+          w: Math.max(300, dragStart.current.pw + (e.clientX - dragStart.current.x)),
+          h: Math.max(300, dragStart.current.ph + (e.clientY - dragStart.current.y))
+        });
+      }
+    };
+    const handleMouseUp = () => {
+      isDragging.current = false;
+      isResizing.current = false;
+    };
+    if (open) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [open]);
+
   if (!open) return null;
 
   return (
-    <div className="h-full flex flex-col shrink-0" style={{
-      width: '320px',
-      background: 'rgba(8,8,8,0.98)',
-      borderRight: '1px solid rgba(255,255,255,0.06)',
+    <div className="flex flex-col shrink-0 shadow-2xl overflow-hidden" style={{
+      position: 'absolute',
+      left: pos.x,
+      top: pos.y,
+      width: size.w,
+      height: size.h,
+      background: 'rgba(10,10,10,0.85)',
+      backdropFilter: 'blur(16px)',
+      border: '1px solid rgba(255,255,255,0.1)',
+      borderRadius: '16px',
+      zIndex: 50,
     }}>
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      {/* Header - Drag Handle */}
+      <div 
+        className="flex items-center justify-between px-4 py-3 shrink-0 cursor-move" 
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+        onMouseDown={(e) => {
+          isDragging.current = true;
+          dragStart.current = { x: e.clientX, y: e.clientY, px: pos.x, py: pos.y, pw: size.w, ph: size.h };
+        }}
+      >
         <div className="flex items-center gap-2">
-          <Sparkles className="h-3.5 w-3.5" style={{ color: '#22c55e' }} />
-          <span className="text-xs font-semibold text-white/70">AI Content</span>
-          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+          <Sparkles className="h-4 w-4" style={{ color: '#22c55e' }} />
+          <span className="text-sm font-semibold text-white/80">AI Content</span>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded"
             style={{ background: projectType === 'latex' ? 'rgba(59,130,246,0.12)' : 'rgba(34,197,94,0.12)', color: projectType === 'latex' ? '#60a5fa' : '#22c55e' }}>
             {projectType === 'latex' ? 'LaTeX' : 'MDX'}
           </span>
         </div>
-        <button onClick={onClose} className="h-6 w-6 rounded flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors">
-          <PanelLeftClose className="h-3.5 w-3.5" />
+        <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="h-7 w-7 rounded-md flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/10 transition-colors cursor-pointer">
+          <X className="h-4 w-4" />
         </button>
       </div>
 
       {/* Scrollable body */}
       <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.08) transparent' }}>
         {/* Search */}
-        <div className="p-3 space-y-2">
-          <div className="flex gap-1.5">
+        <div className="p-4 space-y-3">
+          <div className="flex gap-2">
             <Input placeholder="e.g. Machine Learning, React Hooks..." value={topic}
               onChange={e => setTopic(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') searchHierarchy(); }}
-              className="flex-1 h-8 text-xs bg-white/[0.03] border-white/[0.06] text-white placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-white/15" />
+              className="flex-1 h-10 text-sm bg-white/[0.04] border-white/[0.08] text-white placeholder:text-white/30 focus-visible:ring-1 focus-visible:ring-white/20" />
             <button onClick={searchHierarchy} disabled={isLoadingHierarchy || !topic.trim()}
-              className="h-8 w-8 rounded-md flex items-center justify-center shrink-0 disabled:opacity-30 transition-colors"
+              className="h-10 w-10 rounded-md flex items-center justify-center shrink-0 disabled:opacity-30 transition-colors cursor-pointer"
               style={{ background: 'rgba(34,197,94,0.15)' }}>
-              {isLoadingHierarchy ? <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: '#22c55e' }} /> : <Search className="h-3.5 w-3.5" style={{ color: '#22c55e' }} />}
+              {isLoadingHierarchy ? <Loader2 className="h-4 w-4 animate-spin" style={{ color: '#22c55e' }} /> : <Search className="h-4 w-4" style={{ color: '#22c55e' }} />}
             </button>
           </div>
 
           {/* Method toggle */}
-          <div className="flex gap-0.5 p-0.5 rounded-md" style={{ background: 'rgba(255,255,255,0.02)' }}>
+          <div className="flex gap-1 p-1 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}>
             {([
-              { key: 'crawl' as const, icon: Globe, label: 'Web' },
-              { key: 'llm' as const, icon: Cpu, label: 'LLM' },
+              { key: 'crawl' as const, icon: Globe, label: 'Web Search' },
+              { key: 'llm' as const, icon: Cpu, label: 'LLM Only' },
               { key: 'urls' as const, icon: Link2, label: 'URLs' },
             ]).map(m => (
               <button key={m.key} onClick={() => setMethod(m.key)}
-                className={`flex-1 py-1.5 rounded text-[10px] font-medium flex items-center justify-center gap-1 transition-colors ${method === m.key ? 'text-white/70' : 'text-white/25'}`}
-                style={method === m.key ? { background: 'rgba(34,197,94,0.08)' } : {}}>
-                <m.icon className="h-3 w-3" />{m.label}
+                className={`flex-1 py-2 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${method === m.key ? 'text-white/90 shadow-sm' : 'text-white/40 hover:text-white/60'}`}
+                style={method === m.key ? { background: 'rgba(34,197,94,0.15)' } : {}}>
+                <m.icon className="h-3.5 w-3.5" />{m.label}
               </button>
             ))}
           </div>
@@ -234,9 +284,9 @@ export function AIContentPanel({ open, onClose, projectType, projectName, conten
 
         {/* Generated Snippets — draggable */}
         {snippets.length > 0 && (
-          <div className="px-3 pb-3">
-            <div className="flex items-center justify-between mb-1.5 mt-1">
-              <span className="text-[10px] font-medium text-white/30 uppercase tracking-wider">Generated ({snippets.length})</span>
+          <div className="px-4 pb-6 mt-4">
+            <div className="flex items-center justify-between mb-3 mt-2 border-t border-white/5 pt-3">
+              <span className="text-xs font-semibold text-white/40 uppercase tracking-wider">Generated Snippets ({snippets.length})</span>
               <button onClick={() => {
                 const sep = projectType === 'latex' ? '\n\n' : '\n\n---\n\n';
                 const all = snippets.map(s => s.content).join(sep);
@@ -245,38 +295,38 @@ export function AIContentPanel({ open, onClose, projectType, projectName, conten
                 setIsDirty(true);
                 toast.success('Inserted all snippets');
               }}
-                className="text-[10px] px-2 py-0.5 rounded text-white/30 hover:text-white/60 transition-colors" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                className="text-xs font-medium px-3 py-1.5 rounded-md text-white/50 hover:text-white/90 hover:bg-white/10 transition-colors cursor-pointer" style={{ background: 'rgba(255,255,255,0.04)' }}>
                 Insert All
               </button>
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-3">
               {snippets.map(snippet => (
                 <div
                   key={snippet.id}
                   draggable
                   onDragStart={e => handleDragStart(e, snippet)}
-                  className="rounded-lg border transition-all cursor-grab active:cursor-grabbing group"
-                  style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}
+                  className="rounded-xl border transition-all cursor-grab active:cursor-grabbing group bg-white/[0.02] hover:bg-white/[0.04]"
+                  style={{ border: '1px solid rgba(255,255,255,0.08)' }}
                 >
-                  <div className="flex items-center gap-1.5 px-2.5 py-2">
-                    <GripVertical className="h-3 w-3 text-white/15 shrink-0 group-hover:text-white/30" />
-                    <button className="flex-1 text-left" onClick={() => setExpandedSnippet(expandedSnippet === snippet.id ? null : snippet.id)}>
-                      <span className="text-[11px] font-medium text-white/60 truncate block">{snippet.topic}</span>
-                      <span className="text-[9px] text-white/20">{snippet.content.length} chars</span>
+                  <div className="flex items-center gap-2 px-3 py-2.5">
+                    <GripVertical className="h-4 w-4 text-white/20 shrink-0 group-hover:text-white/50 transition-colors" />
+                    <button className="flex-1 text-left cursor-pointer" onClick={() => setExpandedSnippet(expandedSnippet === snippet.id ? null : snippet.id)}>
+                      <span className="text-sm font-semibold text-white/80 block">{snippet.topic}</span>
+                      <span className="text-xs text-white/30">{snippet.content.length} characters • Drag to Editor</span>
                     </button>
                     <button onClick={() => insertSnippet(snippet)} title="Insert into editor"
-                      className="h-5 px-1.5 rounded text-[9px] font-medium text-white/30 hover:text-white/70 hover:bg-white/5 transition-colors opacity-0 group-hover:opacity-100">
+                      className="h-7 px-2.5 rounded-md text-xs font-semibold text-white/60 hover:text-white hover:bg-green-500/20 hover:text-green-400 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer">
                       Insert
                     </button>
                     <button onClick={() => removeSnippet(snippet.id)} title="Remove"
-                      className="h-5 w-5 rounded flex items-center justify-center text-white/15 hover:text-red-400/70 transition-colors opacity-0 group-hover:opacity-100">
-                      <X className="h-2.5 w-2.5" />
+                      className="h-7 w-7 rounded-md flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-400/10 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer">
+                      <X className="h-3.5 w-3.5" />
                     </button>
                   </div>
                   {expandedSnippet === snippet.id && (
-                    <div className="px-2.5 pb-2.5">
-                      <pre className="text-[10px] text-white/30 leading-relaxed max-h-32 overflow-y-auto whitespace-pre-wrap font-mono rounded p-2"
-                        style={{ background: 'rgba(0,0,0,0.3)' }}>
+                    <div className="px-3 pb-3">
+                      <pre className="text-xs text-white/50 leading-relaxed max-h-48 overflow-y-auto whitespace-pre-wrap font-mono rounded-lg p-3"
+                        style={{ background: 'rgba(0,0,0,0.4)', border: '1px inset rgba(255,255,255,0.05)' }}>
                         {snippet.content.slice(0, 500)}{snippet.content.length > 500 ? '...' : ''}
                       </pre>
                     </div>
@@ -289,13 +339,25 @@ export function AIContentPanel({ open, onClose, projectType, projectName, conten
 
         {/* Empty state */}
         {!isLoadingHierarchy && hierarchy.length === 0 && snippets.length === 0 && (
-          <div className="text-center py-10 px-4 text-white/15">
-            <Search className="h-6 w-6 mx-auto mb-2 opacity-30" />
-            <p className="text-[10px]">Search a topic to generate a hierarchy, then click topics to create content snippets</p>
-            <p className="text-[9px] mt-1 text-white/10">Drag snippets to the editor or click Insert</p>
+          <div className="text-center py-16 px-6 text-white/20">
+            <Search className="h-10 w-10 mx-auto mb-4 opacity-40 text-green-500" />
+            <p className="text-sm font-medium text-white/40">Search a topic to generate a hierarchy, then click topics to create content snippets.</p>
+            <p className="text-xs mt-3 text-white/30">Drag generated snippets directly into your editor or click Insert.</p>
           </div>
         )}
       </div>
+
+      {/* Resize Handle */}
+      <div 
+        className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize z-10"
+        onMouseDown={(e) => {
+          isResizing.current = true;
+          dragStart.current = { x: e.clientX, y: e.clientY, px: pos.x, py: pos.y, pw: size.w, ph: size.h };
+        }}
+        style={{
+          background: 'linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.2) 50%)'
+        }}
+      />
     </div>
   );
 }

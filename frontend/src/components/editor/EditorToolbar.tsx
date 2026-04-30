@@ -14,7 +14,7 @@ interface EditorToolbarProps {
   onImageUpload: () => void;
 }
 
-export function EditorToolbar({ editorRef, content, setContent, setIsDirty, projectType, onOpenAI, onImageUpload }: EditorToolbarProps) {
+export function EditorToolbar({ editorRef, content, setContent, setIsDirty, projectType, onImageUpload }: EditorToolbarProps) {
   const insert = useCallback((before: string, after = '') => {
     const ta = editorRef.current;
     if (!ta) return;
@@ -65,37 +65,30 @@ export function EditorToolbar({ editorRef, content, setContent, setIsDirty, proj
   const actions = projectType === 'latex' ? latexActions : mdxActions;
 
   return (
-    <div className="flex items-center gap-0.5 px-3 py-1.5 shrink-0 flex-wrap"
+    <div className="flex items-center gap-1 px-4 py-2 shrink-0 flex-wrap"
       style={{ background: 'rgba(255,255,255,0.015)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
       {/* Type badge */}
-      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded mr-2"
+      <span className="text-xs font-bold px-2 py-1 rounded mr-3"
         style={{ background: projectType === 'latex' ? 'rgba(59,130,246,0.15)' : 'rgba(34,197,94,0.15)', color: projectType === 'latex' ? '#60a5fa' : '#22c55e' }}>
         {projectType === 'latex' ? 'LaTeX' : 'MDX'}
       </span>
 
       {actions.map((item, i) => {
-        if (!item) return <div key={`sep-${i}`} className="w-px h-5 mx-1" style={{ background: 'rgba(255,255,255,0.06)' }} />;
+        if (!item) return <div key={`sep-${i}`} className="w-px h-6 mx-2" style={{ background: 'rgba(255,255,255,0.08)' }} />;
         const Icon = item.icon;
         return (
           <button key={i} onClick={item.fn} title={item.label}
-            className="h-7 w-7 rounded-md flex items-center justify-center text-white/35 hover:text-white/70 hover:bg-white/[0.04] transition-colors">
-            <Icon className="h-3.5 w-3.5" />
+            className="h-8 w-8 rounded-md flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/[0.05] transition-colors cursor-pointer">
+            <Icon className="h-4 w-4" />
           </button>
         );
       })}
 
-      <div className="w-px h-5 mx-1" style={{ background: 'rgba(255,255,255,0.06)' }} />
+      <div className="w-px h-6 mx-2" style={{ background: 'rgba(255,255,255,0.08)' }} />
 
       <button onClick={onImageUpload} title="Upload Image"
-        className="h-7 w-7 rounded-md flex items-center justify-center text-white/35 hover:text-white/70 hover:bg-white/[0.04] transition-colors">
-        <Upload className="h-3.5 w-3.5" />
-      </button>
-
-      <button onClick={onOpenAI}
-        className="h-7 px-3 rounded-md flex items-center gap-1.5 text-xs font-medium transition-all hover:scale-[1.02] ml-1"
-        style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.15)' }}>
-        <Sparkles className="h-3 w-3" />
-        AI Content
+        className="h-8 w-8 rounded-md flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/[0.05] transition-colors cursor-pointer">
+        <Upload className="h-4 w-4" />
       </button>
     </div>
   );
