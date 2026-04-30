@@ -627,6 +627,7 @@ export type LessonPlanResponse = {
   }[];
   coAuthors?: string[];
   authorUsername?: string;
+  coAuthorUsernames?: string[];
   isPublic: boolean;
   createdAt: string | null;
   updatedAt: string | null;

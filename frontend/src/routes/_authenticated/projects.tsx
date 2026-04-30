@@ -7,7 +7,7 @@ import { getLessonPlans, deleteLessonPlan, saveLessonPlan, getLessonPlanById, Le
 import { stripFrontmatter } from '@/lib/utils';
 import { MDXRenderer } from '@/components/mdxRenderer';
 import {
-  FileType2, FileCode2, Plus, Trash2, Loader2, Search, Globe, Lock, FolderOpen, Eye, X, Pencil, User,
+  FileType2, FileCode2, Plus, Trash2, Loader2, Search, Globe, Lock, FolderOpen, Eye, X, Pencil, User, Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -268,17 +268,26 @@ function ProjectsPage() {
                           <h3 className="text-base font-semibold text-white/90 truncate group-hover:text-white transition-colors">
                             {plan.name}
                           </h3>
-                          <div className="flex items-center gap-2 mt-1">
+                          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                             <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: accent, opacity: 0.8 }}>
                               {isLatex ? 'LaTeX' : 'MDX'}
                             </span>
                             <span className="text-white/10">·</span>
-                            <span className="text-[11px] text-white/40 flex items-center gap-1">
-                              <User className="h-2.5 w-2.5" />
-                              <span className="truncate max-w-[80px]">{plan.authorUsername || "You"}</span>
-                            </span>
-                            <span className="text-white/10">·</span>
                             <span className="text-[11px] text-white/30">{formatDate(plan.createdAt)}</span>
+                          </div>
+                          {/* Author + Co-Authors row */}
+                          <div className="flex items-center gap-2 mt-2 flex-wrap">
+                            <span className="inline-flex items-center gap-1 text-[11px] text-white/50 bg-white/[0.04] px-2 py-0.5 rounded-full border border-white/[0.06]">
+                              <User className="h-2.5 w-2.5 shrink-0" />
+                              <span className="truncate max-w-[70px]">{plan.authorUsername || "You"}</span>
+                            </span>
+                            {plan.coAuthorUsernames && plan.coAuthorUsernames.length > 0 && (
+                              <span className="inline-flex items-center gap-1 text-[11px] text-white/40 bg-white/[0.03] px-2 py-0.5 rounded-full border border-white/[0.05]">
+                                <Users className="h-2.5 w-2.5 shrink-0" />
+                                {plan.coAuthorUsernames.slice(0, 2).join(', ')}
+                                {plan.coAuthorUsernames.length > 2 && <span className="text-white/25"> +{plan.coAuthorUsernames.length - 2}</span>}
+                              </span>
+                            )}
                           </div>
                         </div>
                         <button onClick={() => setDeleteId(plan.id)}

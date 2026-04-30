@@ -1328,3 +1328,9 @@ input, textarea { cursor: text; }
   text-align: center;
   padding: 4rem 1rem;
 }
+
+/* ── Peer Cursor Hover ── */
+.peer-cursor-wrapper:hover .peer-cursor-label {
+  opacity: 1 !important;
+  transform: scale(1) translateX(0) !important;
+}

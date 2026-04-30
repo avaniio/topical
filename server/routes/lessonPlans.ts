@@ -49,10 +49,31 @@ export const lessonPlansRoute = new Hono()
             ))
             .orderBy(desc(lessonPlanTable.createdAt))
             .limit(100);
-        
+
+        // Collect all unique co-author IDs to resolve usernames in one query
+        const allCoAuthorIds = new Set<string>();
+        for (const row of lessonPlansRaw) {
+            const ca = (row.lessonPlan.coAuthors || []) as string[];
+            ca.forEach(id => allCoAuthorIds.add(id));
+        }
+
+        // Batch-resolve co-author usernames
+        let usernameMap: Record<string, string> = {};
+        if (allCoAuthorIds.size > 0) {
+            const { inArray } = await import("drizzle-orm");
+            const coAuthorUsers = await db!
+                .select({ id: userTable.id, username: userTable.username })
+                .from(userTable)
+                .where(inArray(userTable.id, [...allCoAuthorIds]));
+            for (const u of coAuthorUsers) {
+                if (u.username) usernameMap[u.id] = u.username;
+            }
+        }
+
         const lessonPlans = lessonPlansRaw.map(row => ({
             ...row.lessonPlan,
-            authorUsername: row.authorUsername
+            authorUsername: row.authorUsername,
+            coAuthorUsernames: ((row.lessonPlan.coAuthors || []) as string[]).map(id => usernameMap[id] || id)
         }));
         
         return c.json({ lessonPlans });
@@ -157,9 +178,13 @@ export const lessonPlansRoute = new Hono()
             return c.json({ error: "Invalid lesson plan ID" });
         }
 
-        const lessonPlan = await db!
-            .select()
+        const lessonPlanRaw = await db!
+            .select({
+                lessonPlan: lessonPlanTable,
+                authorUsername: userTable.username
+            })
             .from(lessonPlanTable)
+            .leftJoin(userTable, eq(lessonPlanTable.userId, userTable.id))
             .where(and(
                 eq(lessonPlanTable.id, id),
                 or(
@@ -169,12 +194,30 @@ export const lessonPlansRoute = new Hono()
             ))
             .limit(1);
 
-        if (!lessonPlan.length) {
+        if (!lessonPlanRaw.length) {
             c.status(404);
             return c.json({ error: "Lesson plan not found" });
         }
 
-        return c.json(lessonPlan[0]);
+        const row = lessonPlanRaw[0];
+        const coAuthorIds = (row.lessonPlan.coAuthors || []) as string[];
+        let coAuthorUsernames: string[] = [];
+        if (coAuthorIds.length > 0) {
+            const { inArray } = await import("drizzle-orm");
+            const coUsers = await db!
+                .select({ id: userTable.id, username: userTable.username })
+                .from(userTable)
+                .where(inArray(userTable.id, coAuthorIds));
+            const map: Record<string, string> = {};
+            for (const u of coUsers) { if (u.username) map[u.id] = u.username; }
+            coAuthorUsernames = coAuthorIds.map(id => map[id] || id);
+        }
+
+        return c.json({
+            ...row.lessonPlan,
+            authorUsername: row.authorUsername,
+            coAuthorUsernames
+        });
     })
 
     // Create a new lesson plan
