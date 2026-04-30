@@ -86,8 +86,7 @@ function ProjectsPage() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Public toggle confirmation
-  const [publicConfirm, setPublicConfirm] = useState<{ plan: LessonPlanResponse; toPublic: boolean } | null>(null);
+
 
   // Read modal
   const [readProject, setReadProject] = useState<{ name: string; content: string; type: 'mdx' | 'latex' } | null>(null);
@@ -157,23 +156,16 @@ function ProjectsPage() {
     finally { setIsDeleting(false); setDeleteId(null); }
   };
 
-  const confirmTogglePublic = (plan: LessonPlanResponse, toPublic: boolean) => {
+  const togglePublic = async (plan: LessonPlanResponse, toPublic: boolean) => {
     if (toPublic && !user?.username) {
       toast.error('Set a username in your Profile before making projects public.');
       return;
     }
-    setPublicConfirm({ plan, toPublic });
-  };
-
-  const executeTogglePublic = async () => {
-    if (!publicConfirm) return;
-    const { plan, toPublic } = publicConfirm;
     try {
       await saveLessonPlan({ id: plan.id, name: plan.name, mainTopic: plan.mainTopic, topics: plan.topics, isPublic: toPublic });
       queryClient.invalidateQueries({ queryKey: ['user-lesson-plans'] });
       toast.success(toPublic ? 'Project is now public' : 'Project is now private');
     } catch { toast.error('Failed to update'); }
-    finally { setPublicConfirm(null); }
   };
 
   const formatDate = (d: string | null) => d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
@@ -290,7 +282,22 @@ function ProjectsPage() {
                         </button>
                       </div>
 
-
+                      {/* Visibility toggle */}
+                      <div className="flex items-center justify-between mb-4 py-2 px-3 rounded-xl"
+                        style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div className="flex items-center gap-2">
+                          {plan.isPublic
+                            ? <Globe className="h-3.5 w-3.5 text-white/40" />
+                            : <Lock className="h-3.5 w-3.5 text-white/25" />}
+                          <span className="text-xs text-white/40">
+                            {plan.isPublic ? 'Public' : 'Private'}
+                          </span>
+                        </div>
+                        <PillToggle
+                          checked={!!plan.isPublic}
+                          onChange={(v) => togglePublic(plan as LessonPlanResponse, v)}
+                        />
+                      </div>
 
                       {/* Actions */}
                       <div className="flex items-center gap-3">
@@ -355,26 +362,7 @@ function ProjectsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Public Toggle Confirmation */}
-      <Dialog open={!!publicConfirm} onOpenChange={() => setPublicConfirm(null)}>
-        <DialogContent className="sm:max-w-md" style={dialogStyle}>
-          <DialogHeader>
-            <DialogTitle className="text-white/90">{publicConfirm?.toPublic ? 'Make project public?' : 'Make project private?'}</DialogTitle>
-            <DialogDescription className="text-white/40">
-              {publicConfirm?.toPublic
-                ? 'This project will be visible to everyone in the community.'
-                : 'This project will only be visible to you.'}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setPublicConfirm(null)} className="glass-btn border-white/10">Cancel</Button>
-            <Button onClick={executeTogglePublic} className="text-black font-semibold"
-              style={{ background: 'linear-gradient(135deg, #22c55e, #4ade80)' }}>
-              {publicConfirm?.toPublic ? 'Publish' : 'Make Private'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
 
       {/* Read Modal */}
       <Dialog open={!!readProject} onOpenChange={() => setReadProject(null)}>
