@@ -10,7 +10,7 @@ import { AIContentPanel } from '@/components/editor/AIContentDialog';
 import { useAuth } from '@/lib/auth-context';
 import { useYjsCollab } from '@/hooks/useYjsCollab';
 import { PeerCursors } from '@/components/editor/PeerCursors';
-import { Save, Eye, SplitSquareHorizontal, FileCode, Loader2, ArrowLeft, Undo2, Redo2, Users, Search as SearchIcon, UserPlus, X, Wifi, WifiOff, Sparkles } from 'lucide-react';
+import { Save, Eye, SplitSquareHorizontal, FileCode, Loader2, ArrowLeft, Undo2, Redo2, Users, Search as SearchIcon, UserPlus, X, Wifi, WifiOff, Sparkles, PanelLeftClose } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -295,11 +295,6 @@ function ProjectEditor() {
 
         <div className="w-px h-5 mx-2" style={{ background: 'rgba(255,255,255,0.08)' }} />
 
-        <button onClick={() => setShowAI(!showAI)}
-          className={`mr-3 h-8 px-3 rounded-md text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm ${showAI ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-white/5 text-white/50 border border-white/10 hover:text-white/80 hover:bg-white/10'}`}>
-          <Sparkles className="h-3.5 w-3.5" /> AI Workspace
-        </button>
-
         <div className="flex rounded-md overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
           {([
             { mode: 'code' as const, icon: FileCode, label: 'Code' },
@@ -321,9 +316,19 @@ function ProjectEditor() {
         </button>
       </div>
 
-      {/* Toolbar */}
-      <div className="flex items-center shrink-0 py-1" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-        <div className="flex-1">
+      {/* Toolbar & Sidebar Toggle */}
+      <div className="flex items-center shrink-0 px-4 flex-wrap" 
+        style={{ background: 'rgba(255,255,255,0.015)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        
+        <button onClick={() => setShowAI(!showAI)} title="Toggle AI Panel"
+          className={`h-8 px-3 rounded-md text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer shrink-0 ${showAI ? 'text-green-400 bg-green-500/10' : 'text-white/40 hover:text-white/80 hover:bg-white/[0.05]'}`}>
+          <PanelLeftClose className={`h-4 w-4 transition-transform duration-300 ${!showAI ? 'rotate-180' : ''}`} />
+          AI Panel
+        </button>
+
+        <div className="w-px h-6 mx-3" style={{ background: 'rgba(255,255,255,0.08)' }} />
+        
+        <div className="flex-1 flex items-center">
           <EditorToolbar editorRef={editorRef} content={content} setContent={setContent} setIsDirty={setIsDirty}
             projectType={projectType} onImageUpload={handleImageUpload} />
         </div>

@@ -65,8 +65,7 @@ export function EditorToolbar({ editorRef, content, setContent, setIsDirty, proj
   const actions = projectType === 'latex' ? latexActions : mdxActions;
 
   return (
-    <div className="flex items-center gap-1 px-4 py-2 shrink-0 flex-wrap"
-      style={{ background: 'rgba(255,255,255,0.015)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+    <div className="flex items-center gap-1 shrink-0 flex-wrap py-2">
       {/* Type badge */}
       <span className="text-xs font-bold px-2 py-1 rounded mr-3"
         style={{ background: projectType === 'latex' ? 'rgba(59,130,246,0.15)' : 'rgba(34,197,94,0.15)', color: projectType === 'latex' ? '#60a5fa' : '#22c55e' }}>

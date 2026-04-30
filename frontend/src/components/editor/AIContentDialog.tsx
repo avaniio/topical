@@ -38,12 +38,8 @@ export function AIContentPanel({ open, onClose, projectType, projectName, conten
   const [expandedSnippet, setExpandedSnippet] = useState<string | null>(null);
   const dragRef = useRef<string | null>(null);
 
-  // Floating window state
-  const [pos, setPos] = useState({ x: 20, y: 80 });
-  const [size, setSize] = useState({ w: 420, h: 600 });
-  const isDragging = useRef(false);
-  const isResizing = useRef(false);
-  const dragStart = useRef({ x: 0, y: 0, px: 0, py: 0, pw: 0, ph: 0 });
+  // Sidebar state
+  const width = 380;
 
   const searchHierarchy = async () => {
     if (!topic.trim()) return;
@@ -126,69 +122,32 @@ export function AIContentPanel({ open, onClose, projectType, projectName, conten
 
   // Window drag/resize handlers
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isDragging.current) {
-        setPos({
-          x: dragStart.current.px + (e.clientX - dragStart.current.x),
-          y: dragStart.current.py + (e.clientY - dragStart.current.y)
-        });
-      } else if (isResizing.current) {
-        setSize({
-          w: Math.max(300, dragStart.current.pw + (e.clientX - dragStart.current.x)),
-          h: Math.max(300, dragStart.current.ph + (e.clientY - dragStart.current.y))
-        });
-      }
-    };
-    const handleMouseUp = () => {
-      isDragging.current = false;
-      isResizing.current = false;
-    };
-    if (open) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-    }
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [open]);
-
-  if (!open) return null;
+    // Left intentionally blank as drag logic was removed
+  }, []);
 
   return (
-    <div className="flex flex-col shrink-0 shadow-2xl overflow-hidden" style={{
-      position: 'absolute',
-      left: pos.x,
-      top: pos.y,
-      width: size.w,
-      height: size.h,
-      background: 'rgba(10,10,10,0.85)',
-      backdropFilter: 'blur(16px)',
-      border: '1px solid rgba(255,255,255,0.1)',
-      borderRadius: '16px',
-      zIndex: 50,
-    }}>
-      {/* Header - Drag Handle */}
-      <div 
-        className="flex items-center justify-between px-4 py-3 shrink-0 cursor-move" 
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
-        onMouseDown={(e) => {
-          isDragging.current = true;
-          dragStart.current = { x: e.clientX, y: e.clientY, px: pos.x, py: pos.y, pw: size.w, ph: size.h };
-        }}
-      >
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4" style={{ color: '#22c55e' }} />
-          <span className="text-sm font-semibold text-white/80">AI Content</span>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded"
-            style={{ background: projectType === 'latex' ? 'rgba(59,130,246,0.12)' : 'rgba(34,197,94,0.12)', color: projectType === 'latex' ? '#60a5fa' : '#22c55e' }}>
-            {projectType === 'latex' ? 'LaTeX' : 'MDX'}
-          </span>
+    <div className="flex flex-col shrink-0 h-full transition-all duration-300 ease-in-out overflow-hidden" 
+      style={{ 
+        width: open ? `${width}px` : '0px', 
+        opacity: open ? 1 : 0, 
+        borderRight: open ? '1px solid rgba(255,255,255,0.04)' : 'none',
+        background: 'transparent',
+      }}>
+      <div className="flex flex-col h-full shrink-0" style={{ width: `${width}px` }}>
+        {/* Header */}
+        <div 
+          className="flex items-center justify-between px-5 py-4 shrink-0" 
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+        >
+          <div className="flex items-center gap-2.5">
+            <Sparkles className="h-4 w-4" style={{ color: '#22c55e' }} />
+            <span className="text-sm font-semibold text-white/90">AI Generation</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+              style={{ background: projectType === 'latex' ? 'rgba(59,130,246,0.12)' : 'rgba(34,197,94,0.12)', color: projectType === 'latex' ? '#60a5fa' : '#22c55e' }}>
+              {projectType === 'latex' ? 'LaTeX' : 'MDX'}
+            </span>
+          </div>
         </div>
-        <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="h-7 w-7 rounded-md flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/10 transition-colors cursor-pointer">
-          <X className="h-4 w-4" />
-        </button>
-      </div>
 
       {/* Scrollable body */}
       <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.08) transparent' }}>
@@ -346,18 +305,7 @@ export function AIContentPanel({ open, onClose, projectType, projectName, conten
           </div>
         )}
       </div>
-
-      {/* Resize Handle */}
-      <div 
-        className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize z-10"
-        onMouseDown={(e) => {
-          isResizing.current = true;
-          dragStart.current = { x: e.clientX, y: e.clientY, px: pos.x, py: pos.y, pw: size.w, ph: size.h };
-        }}
-        style={{
-          background: 'linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.2) 50%)'
-        }}
-      />
+    </div>
     </div>
   );
 }

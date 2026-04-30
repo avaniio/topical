@@ -19,22 +19,27 @@ export const Route = createFileRoute('/_authenticated/projects')({ component: Pr
 
 /* ─── Custom animated pill toggle ─── */
 function PillToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-  // track: 52×22, padding: 3px each side, thumb: 20×16
-  // safe travel = track_width - thumb_width - 2*padding = 52 - 20 - 6 = 26px
-  const TRAVEL = 26;
+  // Using div instead of button to bypass any browser user-agent defaults.
+  // width: 44, height: 24, border: 1, padding: 2.
+  // inner width = 44 - 2(borders) - 4(padding) = 38.
+  // Thumb is 18. Travel = 38 - 18 = 20.
+  const TRAVEL = 20;
   return (
-    <button
+    <div
       role="switch"
       aria-checked={checked}
+      tabIndex={0}
       onClick={() => onChange(!checked)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onChange(!checked); } }}
       style={{
-        display: 'inline-flex',
+        boxSizing: 'border-box',
+        display: 'flex',
         alignItems: 'center',
-        width: 52,
-        height: 22,
-        borderRadius: 100,
-        padding: '3px',
-        cursor: 'none',
+        width: 44,
+        height: 24,
+        borderRadius: 24,
+        padding: '2px',
+        cursor: 'pointer',
         border: `1px solid ${checked ? 'rgba(200,215,230,0.25)' : 'rgba(255,255,255,0.08)'}`,
         background: checked
           ? 'linear-gradient(135deg, rgba(180,200,220,0.18) 0%, rgba(200,215,230,0.10) 100%)'
@@ -47,7 +52,7 @@ function PillToggle({ checked, onChange }: { checked: boolean; onChange: (v: boo
       }}
     >
       {/* Track shimmer */}
-      <span style={{
+      <div style={{
         position: 'absolute',
         inset: 0,
         borderRadius: 'inherit',
@@ -55,10 +60,10 @@ function PillToggle({ checked, onChange }: { checked: boolean; onChange: (v: boo
         pointerEvents: 'none',
       }} />
       {/* Sliding thumb pill */}
-      <span style={{
-        width: 20,
-        height: 14,
-        borderRadius: 100,
+      <div style={{
+        width: 18,
+        height: 18,
+        borderRadius: '50%',
         flexShrink: 0,
         background: checked
           ? 'linear-gradient(135deg, #cbd5e1 0%, #e2e8f0 100%)'
@@ -69,7 +74,7 @@ function PillToggle({ checked, onChange }: { checked: boolean; onChange: (v: boo
         transform: checked ? `translateX(${TRAVEL}px)` : 'translateX(0px)',
         transition: 'transform 0.38s cubic-bezier(0.34,1.56,0.64,1), background 0.32s ease, box-shadow 0.32s ease',
       }} />
-    </button>
+    </div>
   );
 }
 
@@ -248,6 +253,8 @@ function ProjectsPage() {
                 const type = getType(plan);
                 const isLatex = type === 'latex';
                 const accent = isLatex ? '#60a5fa' : '#22c55e';
+                const isAuthor = user?.id === plan.userId;
+
                 return (
                   <div key={plan.id}
                     className="group relative rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-0.5"
@@ -290,28 +297,32 @@ function ProjectsPage() {
                             )}
                           </div>
                         </div>
-                        <button onClick={() => setDeleteId(plan.id)}
-                          className="h-8 w-8 rounded-lg flex items-center justify-center text-white/15 hover:text-red-400 hover:bg-red-400/5 transition-all shrink-0 opacity-0 group-hover:opacity-100">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        {isAuthor && (
+                          <button onClick={() => setDeleteId(plan.id)}
+                            className="h-8 w-8 rounded-lg flex items-center justify-center text-white/15 hover:text-red-400 hover:bg-red-400/5 transition-all shrink-0 opacity-0 group-hover:opacity-100">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                       </div>
 
                       {/* Visibility toggle */}
-                      <div className="flex items-center justify-between mb-4 py-2 px-3 rounded-xl"
-                        style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <div className="flex items-center gap-2">
-                          {plan.isPublic
-                            ? <Globe className="h-3.5 w-3.5 text-white/40" />
-                            : <Lock className="h-3.5 w-3.5 text-white/25" />}
-                          <span className="text-xs text-white/40">
-                            {plan.isPublic ? 'Public' : 'Private'}
-                          </span>
+                      {isAuthor && (
+                        <div className="flex items-center justify-between mb-4 py-2 px-3 rounded-xl"
+                          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                          <div className="flex items-center gap-2">
+                            {plan.isPublic
+                              ? <Globe className="h-3.5 w-3.5 text-white/40" />
+                              : <Lock className="h-3.5 w-3.5 text-white/25" />}
+                            <span className="text-xs text-white/40">
+                              {plan.isPublic ? 'Public' : 'Private'}
+                            </span>
+                          </div>
+                          <PillToggle
+                            checked={!!plan.isPublic}
+                            onChange={(v) => togglePublic(plan as LessonPlanResponse, v)}
+                          />
                         </div>
-                        <PillToggle
-                          checked={!!plan.isPublic}
-                          onChange={(v) => togglePublic(plan as LessonPlanResponse, v)}
-                        />
-                      </div>
+                      )}
 
                       {/* Actions */}
                       <div className="flex items-center gap-3">
