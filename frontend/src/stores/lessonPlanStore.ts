@@ -17,12 +17,12 @@ export interface SavedLessonTopic {
   order?: number; // Optional order field to preserve hierarchy ordering
 }
 
-// Define the interface for a complete lesson plan
 export interface LessonPlan {
   id?: number;
   name: string;
   mainTopic: string;
   topics: SavedLessonTopic[];
+  coAuthors?: string[];
   isPublic?: boolean;
   createdAt?: string;
   updatedAt?: string;

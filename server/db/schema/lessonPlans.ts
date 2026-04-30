@@ -25,6 +25,7 @@ export const lessonPlans = pgTable(
       parentTopic?: string;
       mainTopic?: string;
     }[]>(),
+    coAuthors: jsonb("co_authors").$type<string[]>().default([]),
     isPublic: boolean("is_public").default(false),
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at').defaultNow()
@@ -42,6 +43,7 @@ export const insertLessonPlanSchema = createInsertSchema(lessonPlans, {
   name: z.string().min(1, { message: "Lesson plan name must not be empty" }),
   mainTopic: z.string().min(1, { message: "Main topic must not be empty" }),
   topics: z.array(savedLessonTopicSchema),
+  coAuthors: z.array(z.string()).default([]),
   isPublic: z.boolean().default(false)
 });
 

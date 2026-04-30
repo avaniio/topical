@@ -7,7 +7,7 @@ import { getLessonPlans, deleteLessonPlan, saveLessonPlan, getLessonPlanById, Le
 import { stripFrontmatter } from '@/lib/utils';
 import { MDXRenderer } from '@/components/mdxRenderer';
 import {
-  FileType2, FileCode2, Plus, Trash2, Loader2, Search, Globe, Lock, FolderOpen, Eye, X, Pencil,
+  FileType2, FileCode2, Plus, Trash2, Loader2, Search, Globe, Lock, FolderOpen, Eye, X, Pencil, User,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -271,6 +271,11 @@ function ProjectsPage() {
                           <div className="flex items-center gap-2 mt-1">
                             <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: accent, opacity: 0.8 }}>
                               {isLatex ? 'LaTeX' : 'MDX'}
+                            </span>
+                            <span className="text-white/10">·</span>
+                            <span className="text-[11px] text-white/40 flex items-center gap-1">
+                              <User className="h-2.5 w-2.5" />
+                              <span className="truncate max-w-[80px]">{plan.authorUsername || "You"}</span>
                             </span>
                             <span className="text-white/10">·</span>
                             <span className="text-[11px] text-white/30">{formatDate(plan.createdAt)}</span>

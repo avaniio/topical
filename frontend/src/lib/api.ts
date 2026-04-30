@@ -599,6 +599,19 @@ export async function getLessonPlans() {
   }
 }
 
+// Search users by username
+export async function searchUsername(query: string) {
+  try {
+    const res = await fetch(`/api/search/username?q=${encodeURIComponent(query)}`);
+    if (!res.ok) throw new Error("Failed to search users");
+    const data = await res.json();
+    return data.users;
+  } catch (error) {
+    console.error("Error searching username:", error);
+    return [];
+  }
+}
+
 // Define the type for a lesson plan response
 export type LessonPlanResponse = {
   id: number;
@@ -612,6 +625,8 @@ export type LessonPlanResponse = {
     parentTopic?: string;
     mainTopic?: string;
   }[];
+  coAuthors?: string[];
+  authorUsername?: string;
   isPublic: boolean;
   createdAt: string | null;
   updatedAt: string | null;

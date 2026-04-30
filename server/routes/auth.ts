@@ -149,4 +149,22 @@ export const authRoute = new Hono()
       console.error("Error updating username:", error);
       return c.json({ error: "Failed to update username" }, 500);
     }
+  })
+  .get("/search/username", getUser, async (c) => {
+    if (!db) return c.json({ error: "Database not configured" }, 503);
+    const query = c.req.query("q");
+    if (!query || query.length < 2) return c.json({ users: [] });
+
+    try {
+      const { ilike } = await import("drizzle-orm");
+      const matchedUsers = await db
+        .select({ id: userTable.id, username: userTable.username, givenName: userTable.givenName })
+        .from(userTable)
+        .where(ilike(userTable.username, `%${query}%`))
+        .limit(10);
+      return c.json({ users: matchedUsers });
+    } catch (error) {
+      console.error("Error searching users:", error);
+      return c.json({ error: "Failed to search users" }, 500);
+    }
   });

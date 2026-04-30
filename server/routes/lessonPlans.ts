@@ -6,7 +6,8 @@ import {
     lessonPlans as lessonPlanTable,
     insertLessonPlanSchema,
 } from "../db/schema/lessonPlans.ts";
-import { eq, desc, and } from "drizzle-orm";
+import { users as userTable } from "../db/schema/users.ts";
+import { eq, desc, and, or, sql } from "drizzle-orm";
 import { z } from "zod";
 
 // Define the create lesson plan schema for API validation
@@ -20,6 +21,7 @@ export const createLessonPlanSchema = z.object({
         parentTopic: z.string().optional(),
         mainTopic: z.string().optional()
     })),
+    coAuthors: z.array(z.string()).optional().default([]),
     isPublic: z.boolean().default(false)
 });
 
@@ -34,12 +36,25 @@ export const lessonPlansRoute = new Hono()
     // Get all lesson plans for the user
     .get("/", getUser, async (c) => {
         const user = c.var.user;
-        const lessonPlans = await db!
-            .select()
+        const lessonPlansRaw = await db!
+            .select({
+                lessonPlan: lessonPlanTable,
+                authorUsername: userTable.username
+            })
             .from(lessonPlanTable)
-            .where(eq(lessonPlanTable.userId, user.id))
+            .leftJoin(userTable, eq(lessonPlanTable.userId, userTable.id))
+            .where(or(
+                eq(lessonPlanTable.userId, user.id),
+                sql`${lessonPlanTable.coAuthors} @> ${JSON.stringify([user.id])}::jsonb`
+            ))
             .orderBy(desc(lessonPlanTable.createdAt))
             .limit(100);
+        
+        const lessonPlans = lessonPlansRaw.map(row => ({
+            ...row.lessonPlan,
+            authorUsername: row.authorUsername
+        }));
+        
         return c.json({ lessonPlans });
     })
 
@@ -147,7 +162,10 @@ export const lessonPlansRoute = new Hono()
             .from(lessonPlanTable)
             .where(and(
                 eq(lessonPlanTable.id, id),
-                eq(lessonPlanTable.userId, user.id)
+                or(
+                    eq(lessonPlanTable.userId, user.id),
+                    sql`${lessonPlanTable.coAuthors} @> ${JSON.stringify([user.id])}::jsonb`
+                )
             ))
             .limit(1);
 
@@ -189,13 +207,16 @@ export const lessonPlansRoute = new Hono()
             return c.json({ error: "Invalid lesson plan ID" });
         }
 
-        // Check if the lesson plan exists and belongs to the user
+        // Check if the lesson plan exists and user has access
         const existingLessonPlan = await db!
             .select()
             .from(lessonPlanTable)
             .where(and(
                 eq(lessonPlanTable.id, id),
-                eq(lessonPlanTable.userId, user.id)
+                or(
+                    eq(lessonPlanTable.userId, user.id),
+                    sql`${lessonPlanTable.coAuthors} @> ${JSON.stringify([user.id])}::jsonb`
+                )
             ))
             .limit(1);
 
@@ -211,12 +232,16 @@ export const lessonPlansRoute = new Hono()
                 name: lessonPlanData.name,
                 mainTopic: lessonPlanData.mainTopic,
                 topics: lessonPlanData.topics as any,
+                coAuthors: lessonPlanData.coAuthors,
                 isPublic: lessonPlanData.isPublic,
                 updatedAt: new Date()
             })
             .where(and(
                 eq(lessonPlanTable.id, id),
-                eq(lessonPlanTable.userId, user.id)
+                or(
+                    eq(lessonPlanTable.userId, user.id),
+                    sql`${lessonPlanTable.coAuthors} @> ${JSON.stringify([user.id])}::jsonb`
+                )
             ))
             .returning()
             .then((res) => res[0]);

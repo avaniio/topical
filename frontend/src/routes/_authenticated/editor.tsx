@@ -1,13 +1,13 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
-import { saveLessonPlan, getLessonPlanById } from '@/lib/api';
+import { saveLessonPlan, getLessonPlanById, searchUsername } from '@/lib/api';
 import { stripFrontmatter } from '@/lib/utils';
 import { MDXRenderer } from '@/components/mdxRenderer';
 import { LaTeXRenderer } from '@/components/editor/LaTeXRenderer';
 import { EditorToolbar } from '@/components/editor/EditorToolbar';
 import { AIContentDialog } from '@/components/editor/AIContentDialog';
-import { Save, Eye, SplitSquareHorizontal, FileCode, Loader2, ArrowLeft, Undo2, Redo2 } from 'lucide-react';
+import { Save, Eye, SplitSquareHorizontal, FileCode, Loader2, ArrowLeft, Undo2, Redo2, Users, Search as SearchIcon, UserPlus, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,11 @@ function ProjectEditor() {
   const [projectName, setProjectName] = useState('Untitled Project');
   const [projectType, setProjectType] = useState<'mdx' | 'latex'>('mdx');
   const [content, setContentRaw] = useState('');
+  const [authorUsername, setAuthorUsername] = useState<string | null>(null);
+  const [coAuthors, setCoAuthors] = useState<string[]>([]);
+  const [showCoAuthorsDialog, setShowCoAuthorsDialog] = useState(false);
+  const [searchUserQuery, setSearchUserQuery] = useState('');
+  const [userSearchResults, setUserSearchResults] = useState<{id: string, username: string}[]>([]);
   const [viewMode, setViewMode] = useState<'code' | 'preview' | 'split'>('split');
   const [isSaving, setIsSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
@@ -65,6 +70,8 @@ function ProjectEditor() {
       const combined = res.topics.filter(t => t.mdxContent?.trim()).map(t => stripFrontmatter(t.mdxContent)).join('\n\n---\n\n');
       setProjectId(res.id);
       setProjectName(res.name);
+      setAuthorUsername(res.authorUsername || null);
+      setCoAuthors(res.coAuthors || []);
       if (res.mainTopic.startsWith('latex:')) setProjectType('latex');
       setContentRaw(combined);
     } catch { toast.error('Failed to load project'); }
@@ -77,7 +84,7 @@ function ProjectEditor() {
     setIsSaving(true);
     try {
       const mainTopic = projectType === 'latex' ? `latex:${projectName}` : projectName;
-      const plan = { id: projectId, name: projectName, mainTopic, topics: [{ topic: projectName, mdxContent: content, isSubtopic: false, parentTopic: projectName, mainTopic }] };
+      const plan = { id: projectId, name: projectName, mainTopic, topics: [{ topic: projectName, mdxContent: content, isSubtopic: false, parentTopic: projectName, mainTopic }], coAuthors };
       const result = await saveLessonPlan(plan);
       if ('error' in result) throw new Error(result.error);
       setProjectId(result.id);
@@ -94,6 +101,31 @@ function ProjectEditor() {
     }, 15000);
     return () => clearInterval(timer);
   }, [isDirty, isSaving, projectId, doSave]);
+
+  // Co-authors search
+  useEffect(() => {
+    if (searchUserQuery.length >= 2) {
+      const delay = setTimeout(async () => {
+        const results = await searchUsername(searchUserQuery);
+        setUserSearchResults(results);
+      }, 300);
+      return () => clearTimeout(delay);
+    } else {
+      setUserSearchResults([]);
+    }
+  }, [searchUserQuery]);
+
+  const addCoAuthor = (userId: string) => {
+    if (!coAuthors.includes(userId)) {
+      setCoAuthors([...coAuthors, userId]);
+      setIsDirty(true);
+      toast.success("Added co-author");
+    }
+  };
+  const removeCoAuthor = (userId: string) => {
+    setCoAuthors(coAuthors.filter(id => id !== userId));
+    setIsDirty(true);
+  };
 
   // Image
   const handleImageUpload = () => { setImageUrl(''); setShowImageDialog(true); };
@@ -143,6 +175,17 @@ function ProjectEditor() {
         </button>
         <input className="bg-transparent border-none outline-none text-white/80 font-semibold text-sm px-2 py-1 rounded-md hover:bg-white/[0.03] focus:bg-white/[0.05] transition-colors min-w-0 flex-shrink"
           value={projectName} onChange={e => { setProjectName(e.target.value); setIsDirty(true); }} />
+          
+        <div className="flex items-center gap-2 ml-2 pl-2 border-l border-white/10">
+          <span className="text-[10px] text-white/30 uppercase tracking-wider font-semibold">Author:</span>
+          <span className="text-xs text-white/60">{authorUsername || "You"}</span>
+          <button onClick={() => setShowCoAuthorsDialog(true)}
+            className="flex items-center gap-1.5 ml-1 px-2 py-0.5 rounded-md bg-white/5 hover:bg-white/10 transition-colors text-xs text-white/50">
+            <Users className="h-3 w-3" />
+            <span>{coAuthors.length}</span>
+          </button>
+        </div>
+
         <div className="flex-1" />
 
         <button onClick={handleUndo} title="Undo (⌘Z)"
@@ -212,6 +255,52 @@ function ProjectEditor() {
 
       <AIContentDialog open={showAI} onOpenChange={setShowAI} projectType={projectType}
         projectName={projectName} content={content} setContent={setContent} setIsDirty={setIsDirty} />
+
+      <Dialog open={showCoAuthorsDialog} onOpenChange={setShowCoAuthorsDialog}>
+        <DialogContent className="sm:max-w-md" style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <DialogHeader>
+            <DialogTitle className="text-white/90 text-lg flex items-center gap-2"><Users className="h-5 w-5"/> Co-Authors</DialogTitle>
+            <DialogDescription className="text-white/40">Add users who can view and edit this document.</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 mt-2">
+            <div className="relative">
+              <SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-white/30" />
+              <Input placeholder="Search username..." value={searchUserQuery} onChange={e => setSearchUserQuery(e.target.value)}
+                className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-1 focus-visible:ring-white/20" />
+            </div>
+            
+            {userSearchResults.length > 0 && (
+              <div className="flex flex-col gap-1 border border-white/10 rounded-lg p-1 bg-white/5 max-h-40 overflow-y-auto">
+                {userSearchResults.map(u => (
+                  <div key={u.id} className="flex items-center justify-between p-2 hover:bg-white/5 rounded-md group">
+                    <span className="text-sm text-white/80">{u.username}</span>
+                    <button onClick={() => addCoAuthor(u.id)} disabled={coAuthors.includes(u.id)}
+                      className="text-white/30 hover:text-green-400 disabled:opacity-30 disabled:hover:text-white/30 transition-colors">
+                      <UserPlus className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-2">
+              <h4 className="text-xs font-semibold text-white/40 uppercase mb-2">Current Co-Authors</h4>
+              {coAuthors.length === 0 ? <p className="text-xs text-white/20">No co-authors added.</p> : (
+                <div className="flex flex-col gap-2">
+                  {coAuthors.map(id => (
+                    <div key={id} className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/5">
+                      <span className="text-sm text-white/70 font-mono text-xs">{id}</span>
+                      <button onClick={() => removeCoAuthor(id)} className="text-white/20 hover:text-red-400 transition-colors">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showImageDialog} onOpenChange={setShowImageDialog}>
         <DialogContent className="sm:max-w-md" style={{ background: 'rgba(10,10,10,0.95)', backdropFilter: 'blur(40px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px' }}>
